@@ -44,4 +44,4 @@ Dieses Projekt ist unter der MIT-Lizenz lizenziert. Siehe die [LICENSE](LICENSE)
 
 ## Kontakt
 
-Bei Fragen oder Anregungen, bitte kontaktiere uns unter [email@example.com](mailto:email@example.com).
+Bei Fragen oder Anregungen, bitte kontaktiere uns unter [hannes.weichselbaum@gmail.com](mailto:hannes.weichselbaum@gmail.com).
