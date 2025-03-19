@@ -1,19 +1,27 @@
-from PIL import Image, ImageDraw, ImageStat
 import csv
+import sys
+import os
 
+from PIL import Image, ImageDraw, ImageStat
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from config.paper_size import FORMATE_MM
 from config.pathnames import RAL_FILE_NAME, DATA_PATH
 from config.const import DPI, PERLEN_GROESSE, FARBBEREICH, FORMAT
+
+
 class GenerateDiamondperls:
-    
-    def __init__(self,
-                 input_file_name,
-                 perlen_groesse=PERLEN_GROESSE, 
-                 farben_anzahl=FARBBEREICH, 
-                 format=FORMAT, 
-                 dpi=DPI,
-                 durchschnitt_farbe_berechnen=True):
+
+    def __init__(
+        self,
+        input_file_name,
+        perlen_groesse=PERLEN_GROESSE,
+        farben_anzahl=FARBBEREICH,
+        format=FORMAT,
+        dpi=DPI,
+        durchschnitt_farbe_berechnen=True,
+    ):
         self._durchschnitt_farbe_berechnen = durchschnitt_farbe_berechnen
         self._input_file_name = input_file_name
         self._perlen_groesse = perlen_groesse
@@ -48,45 +56,55 @@ class GenerateDiamondperls:
         r, g, b = rgb
         nächster_ral = min(
             self._RAL_farben.items(),
-            key=lambda item: (item[1][0][0] - r) ** 2 + (item[1][0][1] - g) ** 2 + (item[1][0][2] - b) ** 2
+            key=lambda item: (item[1][0][0] - r) ** 2
+            + (item[1][0][1] - g) ** 2
+            + (item[1][0][2] - b) ** 2,
         )
         return nächster_ral
-    
+
     def _lade_bild(self):
         """Lädt das Bild und passt es an."""
         self._bild = Image.open(self._input_file_name).convert("RGB")
         # Bild proportional skalieren
         self._bild.thumbnail((self._breite_px, self._höhe_px))
         # Bild in P-Modus mit 16 Farben umwandeln
-        self._bild = self._bild.convert("P", palette=Image.Palette.ADAPTIVE, colors=self._farben_anzahl).convert("RGB")
+        self._bild = self._bild.convert(
+            "P", palette=Image.Palette.ADAPTIVE, colors=self._farben_anzahl
+        ).convert("RGB")
         self._breite, self._länge = self._bild.size
 
     def _zeichne_perlen(self):
         """Zeichnet die Perlen ins Bild."""
         draw = ImageDraw.Draw(self._bild)
         perlengröße_pixel = int(self._dpi * (self._perlen_groesse / 25.4))
-        self._verwendete_farben = set()
+        self.verwendete_farben = set()
 
         for x in range(0, self._breite, perlengröße_pixel):
             for y in range(0, self._länge, perlengröße_pixel):
                 # Bereich für die Perle definieren (Sicherstellen, dass wir nicht über das Bild hinausgehen)
-                teilbild = self._bild.crop((x, y, x + perlengröße_pixel, y + perlengröße_pixel))
+                teilbild = self._bild.crop(
+                    (x, y, x + perlengröße_pixel, y + perlengröße_pixel)
+                )
 
                 # Durchschnittsfarbe berechnen oder den Mittelpunktpixelwert verwenden
                 if self._durchschnitt_farbe_berechnen:
                     rgb_farbe = self._berechne_durchschnittsfarbe(teilbild)
                 else:
-                    rgb_farbe = teilbild.getpixel((perlengröße_pixel // 2, perlengröße_pixel // 2))
-                
+                    rgb_farbe = teilbild.getpixel(
+                        (perlengröße_pixel // 2, perlengröße_pixel // 2)
+                    )
+
                 # Nächste RAL-Farbe finden
                 ral_farbe = self._finde_nächste_ral_farbe(rgb_farbe)
-                self._verwendete_farben.add(ral_farbe[0])  # Füge die RAL-Nummer zur Liste hinzu
-                
+                self.verwendete_farben.add(
+                    ral_farbe[0]
+                )  # Füge die RAL-Nummer zur Liste hinzu
+
                 # Ellipse (Perle) zeichnen
                 draw.ellipse(
                     (x, y, x + perlengröße_pixel, y + perlengröße_pixel),
-                    fill=ral_farbe,
-                    outline="black"  # Optional: schwarze Umrandung für Perlen
+                    fill=ral_farbe[1][0],
+                    outline="black",  # Optional: schwarze Umrandung für Perlen
                 )
 
     def _save_image(self):
@@ -103,9 +121,4 @@ class GenerateDiamondperls:
         self._zeichne_perlen()
         self._save_image()
         self._show_image()
-        print(f"Verwendete RAL-Farben: {self._verwendete_farben}")
         return self._bild
-
-if __name__ == "__main__":
-    dp = GenerateDiamondperls(".\\data\\test_bild.jpg")
-    dp.generate()
