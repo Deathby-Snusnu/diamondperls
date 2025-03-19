@@ -23,7 +23,7 @@ class GenerateDiamondperls:
         durchschnitt_farbe_berechnen=True,
     ):
         self._durchschnitt_farbe_berechnen = durchschnitt_farbe_berechnen
-        self._input_file_name = input_file_name
+        self._input_file_name = f'{DATA_PATH}{input_file_name}'
         self._perlen_groesse = perlen_groesse
         self._farben_anzahl = farben_anzahl
         self._format = format
