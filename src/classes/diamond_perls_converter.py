@@ -97,7 +97,7 @@ class GenerateDiamondperls:
                 # Nächste RAL-Farbe finden
                 ral_farbe = self._finde_nächste_ral_farbe(rgb_farbe)
                 self.verwendete_farben.add(
-                    ral_farbe[0]
+                    (ral_farbe[0], ral_farbe[1])
                 )  # Füge die RAL-Nummer zur Liste hinzu
 
                 # Ellipse (Perle) zeichnen
