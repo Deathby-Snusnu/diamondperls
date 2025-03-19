@@ -85,7 +85,7 @@ class GenerateDiamondperls:
                 # Ellipse (Perle) zeichnen
                 draw.ellipse(
                     (x, y, x + perlengröße_pixel, y + perlengröße_pixel),
-                    fill=rgb_farbe,
+                    fill=ral_farbe,
                     outline="black"  # Optional: schwarze Umrandung für Perlen
                 )
 
