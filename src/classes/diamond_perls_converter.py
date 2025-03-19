@@ -119,6 +119,7 @@ class GenerateDiamondperls:
         """Generiert das Diamantbild und speichert es."""
         self._show_image()
         self._zeichne_perlen()
-        self._save_image()
         self._show_image()
+        self._save_image()
+        
         return self._bild
