@@ -2,17 +2,17 @@ from PIL import Image, ImageDraw, ImageStat
 import csv
 
 
-from src.const.paper_size import FORMATE_MM
-from src.const.pathnames import RAL_FILE_NAME
-
+from config.paper_size import FORMATE_MM
+from config.pathnames import RAL_FILE_NAME, DATA_PATH
+from config.const import DPI, PERLEN_GROESSE, FARBBEREICH, FORMAT
 class GenerateDiamondperls:
     
     def __init__(self,
                  input_file_name,
-                 perlen_groesse=2.5, 
-                 farben_anzahl=64, 
-                 format="A4", 
-                 dpi=300,
+                 perlen_groesse=PERLEN_GROESSE, 
+                 farben_anzahl=FARBBEREICH, 
+                 format=FORMAT, 
+                 dpi=DPI,
                  durchschnitt_farbe_berechnen=True):
         self._durchschnitt_farbe_berechnen = durchschnitt_farbe_berechnen
         self._input_file_name = input_file_name
