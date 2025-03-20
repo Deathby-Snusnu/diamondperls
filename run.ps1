@@ -8,9 +8,9 @@ if ($pythonVersion -notmatch "3.9" -and $pythonVersion -notmatch "3.[1-9]" -and 
 }
 
 Write-Host "Checking for virtual environment..."
-if (-Not (Test-Path ".venv-diamond_perls")) {
+if (-Not (Test-Path ".venv")) {
     Write-Host "No virtual environment found. Creating one..."
-    python -m venv .venv-diamond_perls
+    python -m venv .venv
     if ($LASTEXITCODE -ne 0) {
         Write-Host "Failed to create virtual environment."
         Read-Host "Press Enter to exit"
@@ -20,7 +20,7 @@ if (-Not (Test-Path ".venv-diamond_perls")) {
 }
 
 Write-Host "Activating virtual environment..."
-& .\.venv-diamond_perls\Scripts\Activate.ps1
+& .\.venv\Scripts\Activate.ps1
 
 Write-Host "Installing requirements..."
 if (Test-Path "requirements.txt") {

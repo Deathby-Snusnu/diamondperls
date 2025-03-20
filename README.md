@@ -21,9 +21,9 @@ Diamond Perls Generator ist ein Python-Programm, das einzigartige Diamantmuster 
 3. Erstelle und aktiviere eine virtuelle Umgebung (optional, aber empfohlen):
 
     ```bash
-    python -m venv .venv-diamond_perls
-    source venv/bin/activate  # Für Linux/Mac
-    .venv-diamond_perls\Scripts\activate     # Für Windows
+    python -m venv .venv
+    source venv/bin/activate    # Für Linux/Mac
+    .venv\Scripts\activate      # Für Windows
     ```
 
 4. Installiere die erforderlichen Abhängigkeiten:
