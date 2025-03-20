@@ -1,9 +1,0 @@
-RAL 7032 Kieselgrau
-RAL 7013 Braungrau
-RAL 8004 Kupferbraun
-RAL 8015 Kastanienbraun
-RAL 1019 Graubeige
-RAL 9005 Tiefschwarz
-RAL 9017 Verkehrsschwarz
-RAL 5004 Schwarzblau
-RAL 1014 Elfenbein

@@ -265,7 +265,7 @@ class GenerateDiamondperls:
         """
         """Schreibt die Liste der verwendeten RAL-Farben in eine Textdatei."""
         with open(
-            self._input_file_name.replace(".jpg", "_verwendete_farben.txt"), "w"
+            self._input_file_name.replace(".jpg", "_verwendete_farben.txt"), "w", encoding='utf-8'
         ) as file:
             for farbe, bezeichnung in self.verwendete_farben:
                 file.write(f"{farbe} {bezeichnung}\n")
