@@ -1,4 +1,4 @@
-from classes.diamond_perls_converter import GenerateDiamondperls
+from src.classes.diamond_pearls_converter import GenerateDiamondperls
 
 
 from config.pathnames import DATA_PATH

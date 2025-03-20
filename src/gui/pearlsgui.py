@@ -8,7 +8,7 @@ from typing import Optional
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 try:
-    from src.classes.diamond_perls_converter import GenerateDiamondperls
+    from src.classes.diamond_pearls_converter import GenerateDiamondperls
     from config.paper_size import FORMATE_MM
     from config.const import GUI
 except ModuleNotFoundError as e:
