@@ -22,6 +22,9 @@ if (-Not (Test-Path ".venv")) {
 Write-Host "Activating virtual environment..."
 & .\.venv\Scripts\Activate.ps1
 
+Write-Host "Updating PIP..."
+python.exe -m pip install --upgrade pip
+
 Write-Host "Installing requirements..."
 if (Test-Path "requirements.txt") {
     pip install -r requirements.txt

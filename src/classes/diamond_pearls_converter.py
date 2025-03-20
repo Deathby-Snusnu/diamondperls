@@ -170,6 +170,7 @@ class GenerateDiamondperls:
         self._bild = Image.open(self._input_file_name).convert("RGB")
         # Bild proportional skalieren
         self._bild.thumbnail((self._breite_px, self._höhe_px))
+        self._bild.show()
         # Bild in P-Modus mit 16 Farben umwandeln
         self._bild = self._bild.convert(
             "P", palette=Image.Palette.ADAPTIVE, colors=self._farben_anzahl

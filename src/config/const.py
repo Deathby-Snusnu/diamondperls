@@ -4,5 +4,5 @@ FARBBEREICH = 64
 FORMAT = "A4"
 
 class GUI:
-    GEOMETRY = '600x600'
+    GEOMETRY = '600x400'
     TITLE = "Diamond Perls Generator"
