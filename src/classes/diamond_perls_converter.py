@@ -111,13 +111,13 @@ class GenerateDiamondperls:
             IOError: If there is an error reading the file.
         """
         """Lädt RAL-Farben aus einer CSV-Datei."""
-        self._RAL_farben = {}
+        self._RAL_farben: dict = {}
         with open(RAL_FILE_NAME, "r", encoding="utf-8") as file:
-            reader = csv.reader(file)
+            reader: csv.reader = csv.reader(file)
             next(reader)  # Header überspringen
             for row in reader:
-                ral_nummer = row[0]
-                farb_name = row[6]
+                ral_nummer: str = row[0]
+                farb_name: str = row[6]
                 r, g, b = map(int, row[1].split("-"))
                 self._RAL_farben[ral_nummer] = ((r, g, b), farb_name)
 
@@ -133,7 +133,7 @@ class GenerateDiamondperls:
         """
         """Findet die RAL-Farbe mit der kleinsten euklidischen Distanz zum gegebenen RGB-Wert."""
         r, g, b = rgb
-        nächster_ral = min(
+        nächster_ral: str = min(
             self._RAL_farben.items(),
             key=lambda item: (item[1][0][0] - r) ** 2
             + (item[1][0][1] - g) ** 2
