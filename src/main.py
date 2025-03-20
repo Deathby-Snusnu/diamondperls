@@ -15,7 +15,7 @@ def main():
     generator.generate()
     
     
-    text_farben: list = list(generator.verwendete_farben)
+    text_farben: list = list(generator._verwendete_farben)
     
     print(text_farben)
     print(type(text_farben))

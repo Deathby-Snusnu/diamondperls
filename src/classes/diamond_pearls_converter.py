@@ -8,8 +8,12 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from config.paper_size import FORMATE_MM
 from config.pathnames import RAL_FILE_NAME #DATA_PATH
-from config.const import DPI, PERLEN_GROESSE, FARBBEREICH, FORMAT
+from config.const import DPI, PERLEN_GROESSE, FARBBEREICH, FORMAT, MM_PRO_INCH
 
+# FIXME: !!!! Wenn eine Datei, die KEIN .jpg ist verwendet wird muss die entsprechende Erweiterung KORREKT verwendet werden !!!!
+# FIXME: datei erweiterung extrahieren, unabhängig machen von gross und klein schreibung
+# FIXME: datei erweiterung an alle beteiligten Methoden übergeben 
+# FIXME: ODER als Instanz Variable speichern und in den Methoden berücksichtigen.
 
 class GenerateDiamondperls:
     """
@@ -30,7 +34,7 @@ class GenerateDiamondperls:
         _bild (PIL.Image.Image): The processed image.
         _breite (int): Width of the processed image.
         _länge (int): Height of the processed image.
-        verwendete_farben (set): Set of RAL colors used in the final image.
+        _verwendete_farben (set): Set of RAL colors used in the final image.
     Methods:
         __init__(input_file_name, perlen_groesse, farben_anzahl, format, dpi, durchschnitt_farbe_berechnen):
             Initializes the class with the given parameters and loads necessary resources.
@@ -63,7 +67,8 @@ class GenerateDiamondperls:
     ):
         self._durchschnitt_farbe_berechnen: bool = durchschnitt_farbe_berechnen
         self._input_file_name: str = f'{input_file_name}'
-        self._perlen_groesse: int = perlen_groesse
+        self._image_file_type: str = self._input_file_name.rsplit('.', 1)[-1].lower()
+        self._perlen_groesse: float = perlen_groesse
         self._farben_anzahl: int = farben_anzahl
         self._format: str = format
         self._dpi: int = dpi
@@ -113,7 +118,7 @@ class GenerateDiamondperls:
         """Lädt RAL-Farben aus einer CSV-Datei."""
         self._RAL_farben: dict = {}
         with open(RAL_FILE_NAME, "r", encoding="utf-8") as file:
-            reader: csv.reader = csv.reader(file)
+            reader = csv.reader(file)
             next(reader)  # Header überspringen
             for row in reader:
                 ral_nummer: str = row[0]
@@ -138,7 +143,7 @@ class GenerateDiamondperls:
         """
         """Findet die RAL-Farbe mit der kleinsten euklidischen Distanz zum gegebenen RGB-Wert."""
         r, g, b = rgb
-        nächster_ral: str = min(
+        nächster_ral: tuple[str, tuple[tuple[int, int, int], str]] = min(
             self._RAL_farben.items(),
             key=lambda item: (item[1][0][0] - r) ** 2
             + (item[1][0][1] - g) ** 2
@@ -170,12 +175,12 @@ class GenerateDiamondperls:
         self._bild = Image.open(self._input_file_name).convert("RGB")
         # Bild proportional skalieren
         self._bild.thumbnail((self._breite_px, self._höhe_px))
-        self._bild.show()
         # Bild in P-Modus mit 16 Farben umwandeln
         self._bild = self._bild.convert(
             "P", palette=Image.Palette.ADAPTIVE, colors=self._farben_anzahl
         ).convert("RGB")
         self._breite, self._länge = self._bild.size
+        
 
     def _zeichne_perlen(self):
         """
@@ -205,8 +210,9 @@ class GenerateDiamondperls:
         """
         """Zeichnet die Perlen ins Bild."""
         draw = ImageDraw.Draw(self._bild)
-        perlengröße_pixel = int(self._dpi * (self._perlen_groesse / 25.4))
-        self.verwendete_farben = set()
+        
+        perlengröße_pixel = int(self._dpi * (self._perlen_groesse / MM_PRO_INCH))
+        self._verwendete_farben = set()
 
         for x in range(0, self._breite, perlengröße_pixel):
             for y in range(0, self._länge, perlengröße_pixel):
@@ -225,7 +231,7 @@ class GenerateDiamondperls:
 
                 # Nächste RAL-Farbe finden
                 ral_farbe = self._finde_nächste_ral_farbe(rgb_farbe)
-                self.verwendete_farben.add(
+                self._verwendete_farben.add(
                     (ral_farbe[0], ral_farbe[1][1])
                 )  # Füge die RAL-Nummer zur Liste hinzu
 
@@ -241,13 +247,13 @@ class GenerateDiamondperls:
         Saves the generated image with diamond pearls.
 
         This method saves the modified image with a new filename by replacing
-        the ".jpg" extension in the input file name with "_diamond_perls.jpg".
+        the <extension> in the input file name with "_diamond_perls.<extention>".
 
         Returns:
             None
         """
         """Speichert das Bild mit Perlen."""
-        self._bild.save(self._input_file_name.replace(".jpg", "_diamond_perls.jpg"))
+        self._bild.save(self._input_file_name.replace(f'.{self._image_file_type}', f'_diamond_perls.{self._image_file_type}'))
 
     def _show_image(self):
         """
@@ -271,22 +277,36 @@ class GenerateDiamondperls:
         """
         """Schreibt die Liste der verwendeten RAL-Farben in eine Textdatei."""
         with open(
-            self._input_file_name.replace(".jpg", "_verwendete_farben.txt"), "w", encoding='utf-8'
+            self._input_file_name.replace(f".{self._image_file_type}", "_verwendete_farben.txt"), "w", encoding='utf-8'
         ) as file:
-            for farbe, bezeichnung in self.verwendete_farben:
+            for farbe, bezeichnung in self._verwendete_farben:
                 file.write(f"{farbe} {bezeichnung}\n")
     
+    def _create_colors_pdf_file(self):
+        pass
+        # TODO: Implementieren
+        # TODO: 1. Lade Text Datei
+        # TODO: 2. erzeuge PDF mit einer Tabelle mit dem Farbnamen, evt. den RAL Wert und der Farbe
+        # TODO: 3. PDF Speichern als > self._input_file_name.replace(".jpg", _farben.pdf)
+        # FIXME: Hier ebenfalls berücksichtigen das evtl. ein anderes Bildformat als .jpg geladen wurde
+        
     def generate(self):
         """
-        Generates the diamond image, displays it, draws pearls on it, displays it again, 
-        saves the image, and returns the final image.
-        Returns:
-            PIL.Image.Image: The generated and processed diamond image.
+        Generates a diamond image, processes it by drawing pearls, and saves the results.
+
+        This method performs the following steps:
+        1. Displays the initial diamond image.
+        2. Draws pearls on the diamond image.
+        3. Displays the updated image with pearls.
+        4. Saves the final image to a file.
+        5. Saves the color information to a text file.
+        6. Creates a PDF file containing the color information.
+
+            PIL.Image.Image: The final processed diamond image with pearls.
         """
-        """Generiert das Diamantbild und speichert es."""
-        self._show_image()
         self._zeichne_perlen()
         self._show_image()
         self._save_image()
         self._save_colors_to_textfile()
+        self._create_colors_pdf_file()
         return self._bild
