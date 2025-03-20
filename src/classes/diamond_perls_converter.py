@@ -7,7 +7,7 @@ from PIL import Image, ImageDraw, ImageStat
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from config.paper_size import FORMATE_MM
-from config.pathnames import RAL_FILE_NAME, DATA_PATH
+from config.pathnames import RAL_FILE_NAME #DATA_PATH
 from config.const import DPI, PERLEN_GROESSE, FARBBEREICH, FORMAT
 
 
@@ -61,15 +61,15 @@ class GenerateDiamondperls:
         dpi=DPI,
         durchschnitt_farbe_berechnen=True,
     ):
-        self._durchschnitt_farbe_berechnen = durchschnitt_farbe_berechnen
-        self._input_file_name = f'{DATA_PATH}{input_file_name}'
-        self._perlen_groesse = perlen_groesse
-        self._farben_anzahl = farben_anzahl
-        self._format = format
-        self._dpi = dpi
-        self._formate_mm = FORMATE_MM
-        self._breite_px = self._formate_mm[self._format][0] * self._dpi // 25.4
-        self._höhe_px = self._formate_mm[self._format][1] * self._dpi // 25.4
+        self._durchschnitt_farbe_berechnen: bool = durchschnitt_farbe_berechnen
+        self._input_file_name: str = f'{input_file_name}'
+        self._perlen_groesse: int = perlen_groesse
+        self._farben_anzahl: int = farben_anzahl
+        self._format: str = format
+        self._dpi: int = dpi
+        self._formate_mm: dict = FORMATE_MM
+        self._breite_px: int = self._formate_mm[self._format][0] * self._dpi // 25.4
+        self._höhe_px: int = self._formate_mm[self._format][1] * self._dpi // 25.4
         self._lade_RAL_farben()
         self._lade_bild()
 
@@ -220,7 +220,7 @@ class GenerateDiamondperls:
                 # Nächste RAL-Farbe finden
                 ral_farbe = self._finde_nächste_ral_farbe(rgb_farbe)
                 self.verwendete_farben.add(
-                    (ral_farbe[0], ral_farbe[1])
+                    (ral_farbe[0], ral_farbe[1][1])
                 )  # Füge die RAL-Nummer zur Liste hinzu
 
                 # Ellipse (Perle) zeichnen
@@ -253,6 +253,23 @@ class GenerateDiamondperls:
         """Zeigt das Bild an."""
         self._bild.show()
 
+    def _save_colors_to_textfile(self):
+        """
+        Writes the list of used RAL colors to a text file.
+
+        This method writes the RAL color codes and names to a text file named
+        "verwendete_farben.txt" in the same directory as the input image.
+
+        Returns:
+            None
+        """
+        """Schreibt die Liste der verwendeten RAL-Farben in eine Textdatei."""
+        with open(
+            self._input_file_name.replace(".jpg", "_verwendete_farben.txt"), "w"
+        ) as file:
+            for farbe, bezeichnung in self.verwendete_farben:
+                file.write(f"{farbe} {bezeichnung}\n")
+    
     def generate(self):
         """
         Generates the diamond image, displays it, draws pearls on it, displays it again, 
@@ -265,5 +282,5 @@ class GenerateDiamondperls:
         self._zeichne_perlen()
         self._show_image()
         self._save_image()
-        
+        self._save_colors_to_textfile()
         return self._bild

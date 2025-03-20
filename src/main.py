@@ -13,9 +13,14 @@ def main():
         durchschnitt_farbe_berechnen=True,
     )
     generator.generate()
-    print(generator.verwendete_farben)
-    print(len(generator.verwendete_farben))
-
-
+    
+    
+    text_farben: list = list(generator.verwendete_farben)
+    
+    print(text_farben)
+    print(type(text_farben))
+    print(len(text_farben))
+    for farbe, bezeichnung in text_farben:
+        print(farbe, bezeichnung)
 if __name__ == "__main__":
     main()
