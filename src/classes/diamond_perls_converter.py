@@ -118,7 +118,12 @@ class GenerateDiamondperls:
             for row in reader:
                 ral_nummer: str = row[0]
                 farb_name: str = row[6]
-                r, g, b = map(int, row[1].split("-"))
+                try:
+                    r, g, b = map(int, row[1].split("-"))
+                except ValueError:
+                    print(f"Fehlerhafte RGB-Werte in Zeile: {row}")
+                    continue
+
                 self._RAL_farben[ral_nummer] = ((r, g, b), farb_name)
 
     def _finde_nächste_ral_farbe(self, rgb):

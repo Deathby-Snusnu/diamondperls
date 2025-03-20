@@ -1,14 +1,20 @@
 import sys
 import os
 import tkinter as tk
-from tkinter import ttk
-from tkinter import filedialog, messagebox
+from tkinter import ttk, filedialog, messagebox
 from typing import Optional
 
+# Sicherstellen, dass das Modul gefunden wird
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
-from src.classes.diamond_perls_converter import GenerateDiamondperls
-from config.paper_size import FORMATE_MM
-from config.const import GUI
+
+try:
+    from src.classes.diamond_perls_converter import GenerateDiamondperls
+    from config.paper_size import FORMATE_MM
+    from config.const import GUI
+except ModuleNotFoundError as e:
+    print(f"Module Import Error: {e}")
+    messagebox.showerror("Error", "Required modules could not be found.")
+    sys.exit(1)
 
 class DiamondPerlsApp(tk.Tk):
     """
@@ -45,7 +51,7 @@ class DiamondPerlsApp(tk.Tk):
         # --- Paper Size ---
         ttk.Label(self, text="Paper Size:").grid(row=3, column=0, pady=5)
         self.paper_size_var = tk.StringVar(value=list(FORMATE_MM.keys())[0])
-        self.paper_size_dropdown = ttk.OptionMenu(self, self.paper_size_var, *FORMATE_MM.keys())
+        self.paper_size_dropdown = ttk.Combobox(self, textvariable=self.paper_size_var, values=list(FORMATE_MM.keys()), state="readonly")
         self.paper_size_dropdown.grid(row=4, column=0, pady=5)
 
         # --- Pearl Size ---
@@ -67,7 +73,7 @@ class DiamondPerlsApp(tk.Tk):
         button_frame.columnconfigure(0, weight=1)
 
         ttk.Button(button_frame, text="Generate", command=self.generate_diamond_perls).grid(row=0, column=0, sticky="ew", padx=5)
-        ttk.Button(button_frame, text="Exit", command=sys.exit).grid(row=0, column=1, sticky="ew", padx=5)
+        ttk.Button(button_frame, text="Exit", command=self.destroy).grid(row=0, column=1, sticky="ew", padx=5)
 
     def create_slider(self, label: str, min_value: int, max_value: int, variable: tk.IntVar, row: int) -> ttk.Scale:
         """
@@ -102,7 +108,7 @@ class DiamondPerlsApp(tk.Tk):
         """
         Open a file dialog to select an input file.
         """
-        file_path = filedialog.askopenfilename()
+        file_path = filedialog.askopenfilename(filetypes=[("Image Files", "*.png;*.jpg;*.jpeg;*.bmp;*.gif"), ("All Files", "*.*")])
         if file_path:
             self.file_entry.delete(0, tk.END)
             self.file_entry.insert(0, file_path)
@@ -111,9 +117,9 @@ class DiamondPerlsApp(tk.Tk):
         """
         Generate diamond perls based on the user-defined settings.
         """
-        input_file = self.file_entry.get()
-        color_depth = int(self.color_depth_var.get())
-        dpi = int(self.dpi_var.get())
+        input_file: str = self.file_entry.get()
+        color_depth: int = int(self.color_depth_var.get())
+        dpi: int = int(self.dpi_var.get())
 
         if not input_file:
             messagebox.showerror("Error", "Please select an input file.")
@@ -130,5 +136,9 @@ class DiamondPerlsApp(tk.Tk):
         try:
             generator.generate()
             messagebox.showinfo("Success", "Diamond Perls generated successfully!")
+        except FileNotFoundError:
+            messagebox.showerror("Error", "The selected file was not found.")
+        except PermissionError:
+            messagebox.showerror("Error", "Permission denied. Check file access rights.")
         except Exception as e:
-            messagebox.showerror("Error", f"An error occurred: {e}")
+            messagebox.showerror("Error", f"An unexpected error occurred: {e}")
