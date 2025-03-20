@@ -38,8 +38,7 @@ Diamond Perls Generator ist ein Python-Programm, das einzigartige Diamantmuster 
 
     ```bash
     python  .\src\main.py oder
-            .\src\pearlsapp.py
-            .\start.bat oder
+            .\src\pearlsapp.py oder
             .\start.ps1
     ```
 
