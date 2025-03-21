@@ -73,8 +73,8 @@ class GenerateDiamondperls:
         self._format: str = format
         self._dpi: int = dpi
         self._formate_mm: dict = FORMATE_MM
-        self._breite_px: int = self._formate_mm[self._format][0] * self._dpi // 25.4
-        self._höhe_px: int = self._formate_mm[self._format][1] * self._dpi // 25.4
+        self._breite_px: int = round(self._formate_mm[self._format][0] * self._dpi / MM_PRO_INCH)
+        self._höhe_px: int = round(self._formate_mm[self._format][1] * self._dpi / MM_PRO_INCH)
         self._lade_RAL_farben()
         self._lade_bild()
 
@@ -153,33 +153,57 @@ class GenerateDiamondperls:
 
     def _lade_bild(self):
         """
-        Loads the image, scales it proportionally, and converts it to a reduced color palette.
-
-        This method performs the following steps:
-        1. Opens the image file specified by `_input_file_name` and converts it to RGB mode.
-        2. Scales the image proportionally to fit within the dimensions specified by `_breite_px` and `_höhe_px`.
-        3. Converts the image to a palette-based mode (P) with a maximum of `_farben_anzahl` colors,
-           using an adaptive palette, and then converts it back to RGB mode.
-        4. Updates the image dimensions (`_breite` and `_länge`) based on the processed image.
-
-        Attributes:
-            _input_file_name (str): The file path of the input image.
-            _breite_px (int): The maximum width of the scaled image in pixels.
-            _höhe_px (int): The maximum height of the scaled image in pixels.
-            _farben_anzahl (int): The number of colors to use in the adaptive palette.
-            _bild (Image): The processed image object.
-            _breite (int): The width of the processed image in pixels.
-            _länge (int): The height of the processed image in pixels.
+        Lädt ein Bild, skaliert es proportional, dreht es bei Bedarf und reduziert die Farbpalette.
+        Diese Methode führt folgende Schritte aus:
+        1. Öffnet die Bilddatei, die durch `_input_file_name` angegeben ist, und konvertiert sie in den RGB-Modus.
+        2. Dreht das Bild automatisch um 90 Grad, falls die Dimensionen des Bildes und die Zielmaße nicht übereinstimmen.
+        3. Skaliert das Bild proportional, um innerhalb der durch `_breite_px` und `_höhe_px` angegebenen Zielmaße zu bleiben.
+        4. Füllt das Bild mit weißem Hintergrund auf, falls es kleiner als die Zielmaße ist.
+        5. Reduziert die Farbpalette des Bildes auf `_farben_anzahl` Farben mit einer adaptiven Palette.
+        6. Aktualisiert die Bildmaße (`_breite` und `_länge`) basierend auf dem verarbeiteten Bild.
+        Attribute:
+            _input_file_name (str): Der Dateipfad des Eingabebildes.
+            _breite_px (int): Die maximale Breite des skalierten Bildes in Pixeln.
+            _höhe_px (int): Die maximale Höhe des skalierten Bildes in Pixeln.
+            _farben_anzahl (int): Die Anzahl der Farben, die in der adaptiven Palette verwendet werden.
+            _bild (Image): Das verarbeitete Bildobjekt.
+            _breite (int): Die Breite des verarbeiteten Bildes in Pixeln.
+            _länge (int): Die Höhe des verarbeiteten Bildes in Pixeln.
         """
-        """Lädt das Bild und passt es an."""
+
         self._bild = Image.open(self._input_file_name).convert("RGB")
+
+        # Originalgröße des Bildes
+        orig_breite, orig_höhe = self._bild.size
+        ziel_breite, ziel_höhe = self._breite_px, self._höhe_px
+
+        # **Automatische Drehung für maximale Abdeckung**
+        if (orig_breite < orig_höhe and ziel_breite > ziel_höhe) or (orig_breite > orig_höhe and ziel_breite < ziel_höhe):
+            self._bild = self._bild.rotate(90, expand=True)
+            orig_breite, orig_höhe = self._bild.size  # Neue Größe nach Rotation aktualisieren
+
+        # **Skalierung mit Erhaltung des Seitenverhältnisses**
+        skalierungsfaktor = min(ziel_breite / orig_breite, ziel_höhe / orig_höhe)
+        neue_breite = int(orig_breite * skalierungsfaktor)
+        neue_höhe = int(orig_höhe * skalierungsfaktor)
+
         # Bild proportional skalieren
-        self._bild.thumbnail((self._breite_px, self._höhe_px))
-        # Bild in P-Modus mit 16 Farben umwandeln
+        self._bild = self._bild.resize((neue_breite, neue_höhe), Image.Resampling.LANCZOS)
+
+        # **Falls das Bild kleiner ist, weiß auffüllen**
+        neues_bild = Image.new("RGB", (ziel_breite, ziel_höhe), (255, 255, 255))
+        position = ((ziel_breite - neue_breite) // 2, (ziel_höhe - neue_höhe) // 2)
+        neues_bild.paste(self._bild, position)
+
+        self._bild = neues_bild
+
+        # **Farben reduzieren**
         self._bild = self._bild.convert(
             "P", palette=Image.Palette.ADAPTIVE, colors=self._farben_anzahl
         ).convert("RGB")
+
         self._breite, self._länge = self._bild.size
+
         
 
     def _zeichne_perlen(self):

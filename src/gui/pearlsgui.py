@@ -9,7 +9,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.
 try:
     from src.classes.diamond_pearls_converter import GenerateDiamondperls
     from config.paper_size import FORMATE_MM
-    from config.const import GUI
+    from config.const import GUI, DPI, PERLEN_GROESSE, FORMAT, FARBBEREICH
 except ModuleNotFoundError as e:
     print(f"Module Import Error: {e}")
     messagebox.showerror("Error", "Required modules could not be found.")
@@ -40,22 +40,25 @@ class DiamondPerlsApp(tk.Tk):
         ttk.Button(file_frame, text="Browse", command=self.browse_file).grid(row=0, column=2, padx=5)
 
         # --- Color Depth ---
-        self.color_depth_var = tk.IntVar(value=100)
+        self.color_depth_var = tk.IntVar(value=FARBBEREICH)
         self.create_slider("Color Depth:", 1, 200, self.color_depth_var, 1)
 
         # --- DPI ---
-        self.dpi_var = tk.IntVar(value=300)
+        self.dpi_var = tk.IntVar(value=DPI)
         self.create_slider("DPI:", 72, 600, self.dpi_var, 2)
 
         # --- Paper Size ---
         ttk.Label(self, text="Paper Size:").grid(row=3, column=0, pady=5)
         self.paper_size_var = tk.StringVar(value=list(FORMATE_MM.keys())[0])
-        self.paper_size_dropdown = ttk.Combobox(self, textvariable=self.paper_size_var, values=list(FORMATE_MM.keys()), state="readonly")
+        self.paper_size_dropdown = ttk.Combobox(self, 
+                                                textvariable=self.paper_size_var, 
+                                                values=list(FORMATE_MM.keys()), 
+                                                state="readonly")
         self.paper_size_dropdown.grid(row=4, column=0, pady=5)
 
         # --- Pearl Size ---
         ttk.Label(self, text="Pearl Size (mm):").grid(row=5, column=0, pady=5)
-        self.pearl_size_var = tk.DoubleVar(value=2.5)
+        self.pearl_size_var = tk.DoubleVar(value=PERLEN_GROESSE)
         self.pearl_size_entry = ttk.Entry(self, textvariable=self.pearl_size_var, width=10)
         self.pearl_size_entry.grid(row=6, column=0, pady=5)
 
@@ -107,7 +110,8 @@ class DiamondPerlsApp(tk.Tk):
         """
         Open a file dialog to select an input file.
         """
-        file_path = filedialog.askopenfilename(filetypes=[("Image Files", "*.png;*.jpg;*.jpeg;*.bmp;*.gif"), ("All Files", "*.*")])
+        file_path = filedialog.askopenfilename(filetypes=[("Image Files", "*.png;*.jpg;*.jpeg;*.bmp;*.gif"),
+                                                          ("All Files", "*.*")])
         if file_path:
             self.file_entry.delete(0, tk.END)
             self.file_entry.insert(0, file_path)
@@ -119,7 +123,10 @@ class DiamondPerlsApp(tk.Tk):
         input_file: str = self.file_entry.get()
         color_depth: int = int(self.color_depth_var.get())
         dpi: int = int(self.dpi_var.get())
-
+        druck_format: str = self.paper_size_var.get()
+        perlen_groesse: float = self.pearl_size_var.get()
+        durchschnitt_farbe_berechnen: bool = self.average_color_var.get()
+        
         if not input_file:
             messagebox.showerror("Error", "Please select an input file.")
             return
@@ -128,9 +135,9 @@ class DiamondPerlsApp(tk.Tk):
             input_file_name=input_file,
             farben_anzahl=color_depth,
             dpi=dpi,
-            format=self.paper_size_var.get(),
-            perlen_groesse=self.pearl_size_var.get(),
-            durchschnitt_farbe_berechnen=self.average_color_var.get()
+            format=druck_format,
+            perlen_groesse=perlen_groesse,
+            durchschnitt_farbe_berechnen=durchschnitt_farbe_berechnen
         )
         try:
             generator.generate()
