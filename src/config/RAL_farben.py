@@ -1,3 +1,0 @@
-RAL_COLORS: dict = {}
-    
-    
