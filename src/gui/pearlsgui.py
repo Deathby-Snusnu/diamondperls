@@ -4,7 +4,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 
 # Sicherstellen, dass das Modul gefunden wird
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 try:
     from src.classes.diamond_pearls_converter import GenerateDiamondperls
@@ -14,6 +14,7 @@ except ModuleNotFoundError as e:
     print(f"Module Import Error: {e}")
     messagebox.showerror("Error", "Required modules could not be found.")
     sys.exit(1)
+
 
 class DiamondPerlsApp(tk.Tk):
     """
@@ -34,10 +35,14 @@ class DiamondPerlsApp(tk.Tk):
         file_frame.grid(row=0, column=0, pady=10, padx=10, sticky="ew")
         file_frame.columnconfigure(1, weight=1)
 
-        ttk.Label(file_frame, text="Input File:").grid(row=0, column=0, padx=5, sticky="w")
+        ttk.Label(file_frame, text="Input File:").grid(
+            row=0, column=0, padx=5, sticky="w"
+        )
         self.file_entry = ttk.Entry(file_frame)
         self.file_entry.grid(row=0, column=1, padx=5, sticky="ew")
-        ttk.Button(file_frame, text="Browse", command=self.browse_file).grid(row=0, column=2, padx=5)
+        ttk.Button(file_frame, text="Browse", command=self.browse_file).grid(
+            row=0, column=2, padx=5
+        )
 
         # --- Color Depth ---
         self.color_depth_var = tk.IntVar(value=FARBBEREICH)
@@ -50,16 +55,20 @@ class DiamondPerlsApp(tk.Tk):
         # --- Paper Size ---
         ttk.Label(self, text="Paper Size:").grid(row=3, column=0, pady=5)
         self.paper_size_var = tk.StringVar(value=list(FORMATE_MM.keys())[0])
-        self.paper_size_dropdown = ttk.Combobox(self, 
-                                                textvariable=self.paper_size_var, 
-                                                values=list(FORMATE_MM.keys()), 
-                                                state="readonly")
+        self.paper_size_dropdown = ttk.Combobox(
+            self,
+            textvariable=self.paper_size_var,
+            values=list(FORMATE_MM.keys()),
+            state="readonly",
+        )
         self.paper_size_dropdown.grid(row=4, column=0, pady=5)
 
         # --- Pearl Size ---
         ttk.Label(self, text="Pearl Size (mm):").grid(row=5, column=0, pady=5)
         self.pearl_size_var = tk.DoubleVar(value=PERLEN_GROESSE)
-        self.pearl_size_entry = ttk.Entry(self, textvariable=self.pearl_size_var, width=10)
+        self.pearl_size_entry = ttk.Entry(
+            self, textvariable=self.pearl_size_var, width=10
+        )
         self.pearl_size_entry.grid(row=6, column=0, pady=5)
 
         # --- Average Color Calculation ---
@@ -74,10 +83,16 @@ class DiamondPerlsApp(tk.Tk):
         button_frame.grid(row=8, column=0, pady=20, padx=10, sticky="ew")
         button_frame.columnconfigure(0, weight=1)
 
-        ttk.Button(button_frame, text="Generate", command=self.generate_diamond_perls).grid(row=0, column=0, sticky="ew", padx=5)
-        ttk.Button(button_frame, text="Exit", command=self.destroy).grid(row=0, column=1, sticky="ew", padx=5)
+        ttk.Button(
+            button_frame, text="Generate", command=self.generate_diamond_perls
+        ).grid(row=0, column=0, sticky="ew", padx=5)
+        ttk.Button(button_frame, text="Exit", command=self.destroy).grid(
+            row=0, column=1, sticky="ew", padx=5
+        )
 
-    def create_slider(self, label: str, min_value: int, max_value: int, variable: tk.IntVar, row: int) -> ttk.Scale:
+    def create_slider(
+        self, label: str, min_value: int, max_value: int, variable: tk.IntVar, row: int
+    ) -> ttk.Scale:
         """
         Helper function to create a labeled slider.
 
@@ -95,14 +110,18 @@ class DiamondPerlsApp(tk.Tk):
         frame.grid(row=row, column=0, pady=5, padx=10, sticky="ew")
 
         ttk.Label(frame, text=label).pack(anchor="w")
-        slider = ttk.Scale(frame, from_=min_value, to=max_value, orient="horizontal", variable=variable)
+        slider = ttk.Scale(
+            frame, from_=min_value, to=max_value, orient="horizontal", variable=variable
+        )
         slider.pack(fill="x")
 
         value_label = ttk.Label(frame, text=f"{int(variable.get())}")
         value_label.pack()
 
         # Update the label when the slider value changes
-        variable.trace_add("write", lambda *args: value_label.config(text=str(int(variable.get()))))
+        variable.trace_add(
+            "write", lambda *args: value_label.config(text=str(int(variable.get())))
+        )
 
         return slider
 
@@ -110,8 +129,12 @@ class DiamondPerlsApp(tk.Tk):
         """
         Open a file dialog to select an input file.
         """
-        file_path = filedialog.askopenfilename(filetypes=[("Image Files", "*.png;*.jpg;*.jpeg;*.bmp;*.gif"),
-                                                          ("All Files", "*.*")])
+        file_path = filedialog.askopenfilename(
+            filetypes=[
+                ("Image Files", "*.png;*.jpg;*.jpeg;*.bmp;*.gif"),
+                ("All Files", "*.*"),
+            ]
+        )
         if file_path:
             self.file_entry.delete(0, tk.END)
             self.file_entry.insert(0, file_path)
@@ -126,7 +149,7 @@ class DiamondPerlsApp(tk.Tk):
         druck_format: str = self.paper_size_var.get()
         perlen_groesse: float = self.pearl_size_var.get()
         durchschnitt_farbe_berechnen: bool = self.average_color_var.get()
-        
+
         if not input_file:
             messagebox.showerror("Error", "Please select an input file.")
             return
@@ -137,15 +160,17 @@ class DiamondPerlsApp(tk.Tk):
             dpi=dpi,
             format=druck_format,
             perlen_groesse=perlen_groesse,
-            durchschnitt_farbe_berechnen=durchschnitt_farbe_berechnen
+            durchschnitt_farbe_berechnen=durchschnitt_farbe_berechnen,
         )
         try:
             generator.generate()
             messagebox.showinfo("Success", "Diamond Perls generated successfully!")
-        
+
         except FileNotFoundError:
             messagebox.showerror("Error", "The selected file was not found.")
         except PermissionError:
-            messagebox.showerror("Error", "Permission denied. Check file access rights.")
+            messagebox.showerror(
+                "Error", "Permission denied. Check file access rights."
+            )
         except Exception as e:
-            messagebox.showerror("Error", f"An unexpected error occurred: {e}") 
+            messagebox.showerror("Error", f"An unexpected error occurred: {e}")

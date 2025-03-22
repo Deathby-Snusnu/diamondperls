@@ -252,8 +252,8 @@ class GenerateDiamondperls:
                 dmc_farbe = self._finde_nächste_dmc_farbe(rgb_farbe)
                 dmc_nummer = dmc_farbe[0]
                 rgb = dmc_farbe[1]
-                r,g,b = rgb
-                textfarbe: tuple[int,int,int] = (255-r,255-g,255-b)
+                r, g, b = rgb
+                textfarbe: tuple[int, int, int] = (255 - r, 255 - g, 255 - b)
                 farb_name = dmc_farbe[2]
 
                 # Falls die Farbe noch nicht existiert, eine neue Nummer vergeben
@@ -269,18 +269,21 @@ class GenerateDiamondperls:
                     outline="black",
                 )
 
-                font_size = max(10, perlengröße_pixel // 2)  # Dynamische Schriftgröße, min. 10px
-                font = ImageFont.truetype("arial.ttf", font_size)  # Arial oder andere Schriftart
+                font_size = max(
+                    10, perlengröße_pixel // 2
+                )  # Dynamische Schriftgröße, min. 10px
+                font = ImageFont.truetype(
+                    "arial.ttf", font_size
+                )  # Arial oder andere Schriftart
 
-                
                 draw.text(
-                    (x + perlengröße_pixel // 2, y + perlengröße_pixel // 2), 
-                    str(farb_nummer), 
-                    fill=textfarbe, 
-                    font=font, 
-                    anchor="mm"  # Zentriert die Zahl auf der Perle
+                    (x + perlengröße_pixel // 2, y + perlengröße_pixel // 2),
+                    str(farb_nummer),
+                    fill=textfarbe,
+                    font=font,
+                    anchor="mm",  # Zentriert die Zahl auf der Perle
                 )
-        self._verwendete_farben = farb_mapping   
+        self._verwendete_farben = farb_mapping
 
     def _save_image(self):
         """
