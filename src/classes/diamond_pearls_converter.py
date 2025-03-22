@@ -2,22 +2,22 @@ import csv
 import sys
 import os
 
-from reportlab.lib.pagesizes import letter
-from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
 
-from PIL import Image, ImageDraw, ImageStat
+from PIL import Image, ImageDraw, ImageStat, ImageFont
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from config.paper_size import FORMATE_MM
-from config.pathnames import DMC_FILE_NAME #DATA_PATH
+from config.pathnames import DMC_FILE_NAME  # DATA_PATH
 from config.const import DPI, PERLEN_GROESSE, FARBBEREICH, FORMAT, MM_PRO_INCH
 
 # FIXME: !!!! Wenn eine Datei, die KEIN .jpg ist verwendet wird muss die entsprechende Erweiterung KORREKT verwendet werden !!!!
 # FIXME: datei erweiterung extrahieren, unabhängig machen von gross und klein schreibung
-# FIXME: datei erweiterung an alle beteiligten Methoden übergeben 
+# FIXME: datei erweiterung an alle beteiligten Methoden übergeben
 # FIXME: ODER als Instanz Variable speichern und in den Methoden berücksichtigen.
+
 
 class GenerateDiamondperls:
     """
@@ -70,15 +70,20 @@ class GenerateDiamondperls:
         durchschnitt_farbe_berechnen=True,
     ):
         self._durchschnitt_farbe_berechnen: bool = durchschnitt_farbe_berechnen
-        self._input_file_name: str = f'{input_file_name}'
-        self._image_file_type: str = self._input_file_name.rsplit('.', 1)[-1].lower()
+        self._input_file_name: str = f"{input_file_name}"
+        self._image_file_type: str = self._input_file_name.rsplit(".", 1)[-1].lower()
         self._perlen_groesse: float = perlen_groesse
         self._farben_anzahl: int = farben_anzahl
         self._format: str = format
         self._dpi: int = dpi
         self._formate_mm: dict = FORMATE_MM
-        self._breite_px: int = round(self._formate_mm[self._format][0] * self._dpi / MM_PRO_INCH)
-        self._höhe_px: int = round(self._formate_mm[self._format][1] * self._dpi / MM_PRO_INCH)
+        self._breite_px: int = round(
+            self._formate_mm[self._format][0] * self._dpi / MM_PRO_INCH
+        )
+        self._verwendete_farben: dict = {}
+        self._höhe_px: int = round(
+            self._formate_mm[self._format][1] * self._dpi / MM_PRO_INCH
+        )
         self._lade_DMC_farben()
         self._lade_bild()
 
@@ -121,7 +126,9 @@ class GenerateDiamondperls:
                     dmc_nummer = row[0]
                     farb_name = row[1]
                     try:
-                        r, g, b = map(int, row[2:5])  # Convert RGB values from string to integers
+                        r, g, b = map(
+                            int, row[2:5]
+                        )  # Convert RGB values from string to integers
                     except ValueError:
                         print(f"Fehlerhafte RGB-Werte in Zeile: {row}")
                         continue
@@ -146,14 +153,13 @@ class GenerateDiamondperls:
         nächster_dmc = min(
             self._DMC_farben.items(),
             key=lambda item: (item[1][0][0] - r) ** 2  # R
-                            + (item[1][0][1] - g) ** 2  # G
-                            + (item[1][0][2] - b) ** 2  # B
+            + (item[1][0][1] - g) ** 2  # G
+            + (item[1][0][2] - b) ** 2,  # B
         )
         dmc_nummer = nächster_dmc[0]
         rgb_farbe = nächster_dmc[1][0]  # RGB values of the closest DMC color
         farb_name = nächster_dmc[1][1]  # Color name
         return dmc_nummer, rgb_farbe, farb_name
-
 
     def _lade_bild(self):
         """
@@ -182,9 +188,13 @@ class GenerateDiamondperls:
         ziel_breite, ziel_höhe = self._breite_px, self._höhe_px
 
         # **Automatische Drehung für maximale Abdeckung**
-        if (orig_breite < orig_höhe and ziel_breite > ziel_höhe) or (orig_breite > orig_höhe and ziel_breite < ziel_höhe):
+        if (orig_breite < orig_höhe and ziel_breite > ziel_höhe) or (
+            orig_breite > orig_höhe and ziel_breite < ziel_höhe
+        ):
             self._bild = self._bild.rotate(90, expand=True)
-            orig_breite, orig_höhe = self._bild.size  # Neue Größe nach Rotation aktualisieren
+            orig_breite, orig_höhe = (
+                self._bild.size
+            )  # Neue Größe nach Rotation aktualisieren
 
         # **Skalierung mit Erhaltung des Seitenverhältnisses**
         skalierungsfaktor = min(ziel_breite / orig_breite, ziel_höhe / orig_höhe)
@@ -192,7 +202,9 @@ class GenerateDiamondperls:
         neue_höhe = int(orig_höhe * skalierungsfaktor)
 
         # Bild proportional skalieren
-        self._bild = self._bild.resize((neue_breite, neue_höhe), Image.Resampling.LANCZOS)
+        self._bild = self._bild.resize(
+            (neue_breite, neue_höhe), Image.Resampling.LANCZOS
+        )
 
         # **Falls das Bild kleiner ist, weiß auffüllen**
         neues_bild = Image.new("RGB", (ziel_breite, ziel_höhe), (255, 255, 255))
@@ -208,22 +220,21 @@ class GenerateDiamondperls:
 
         self._breite, self._länge = self._bild.size
 
-        
-
     def _zeichne_perlen(self):
         """Zeichnet die Perlen ins Bild."""
         draw = ImageDraw.Draw(self._bild)
 
         perlengröße_pixel = round(self._dpi * (self._perlen_groesse / MM_PRO_INCH))
-        self._verwendete_farben = set()
+        zähler = 1  # Startwert für die Nummerierung
+        farb_mapping = {}  # Speichert die Farbe und die zugehörige Nummer
 
         for x in range(0, self._breite, perlengröße_pixel):
             for y in range(0, self._länge, perlengröße_pixel):
                 crop_box = (
-                    x, 
-                    y, 
-                    min(x + perlengröße_pixel, self._breite), 
-                    min(y + perlengröße_pixel, self._länge)
+                    x,
+                    y,
+                    min(x + perlengröße_pixel, self._breite),
+                    min(y + perlengröße_pixel, self._länge),
                 )
                 teilbild = self._bild.crop(crop_box)
 
@@ -231,18 +242,26 @@ class GenerateDiamondperls:
                     rgb_farbe = self._berechne_durchschnittsfarbe(teilbild)
                 else:
                     rgb_farbe = teilbild.getpixel(
-                        (min(perlengröße_pixel // 2, teilbild.width - 1), 
-                        min(perlengröße_pixel // 2, teilbild.height - 1))
+                        (
+                            min(perlengröße_pixel // 2, teilbild.width - 1),
+                            min(perlengröße_pixel // 2, teilbild.height - 1),
+                        )
                     )
 
-                # Suchen der nächstgelegenen DMC-Farbe und des Farbnamen
+                # Suchen der nächstgelegenen DMC-Farbe
                 dmc_farbe = self._finde_nächste_dmc_farbe(rgb_farbe)
                 dmc_nummer = dmc_farbe[0]
                 rgb = dmc_farbe[1]
-                farb_name = dmc_farbe[2]                
+                r,g,b = rgb
+                textfarbe: tuple[int,int,int] = (255-r,255-g,255-b)
+                farb_name = dmc_farbe[2]
 
+                # Falls die Farbe noch nicht existiert, eine neue Nummer vergeben
+                if dmc_nummer not in farb_mapping:
+                    farb_mapping[dmc_nummer] = (zähler, farb_name, rgb)
+                    zähler += 1  # Nur erhöhen, wenn eine neue Farbe gefunden wird
 
-                self._verwendete_farben.add((dmc_nummer, farb_name))  # Speichert sowohl Nummer als auch Name
+                farb_nummer = farb_mapping[dmc_nummer][0]
 
                 draw.ellipse(
                     (x, y, x + perlengröße_pixel, y + perlengröße_pixel),
@@ -250,6 +269,18 @@ class GenerateDiamondperls:
                     outline="black",
                 )
 
+                font_size = max(10, perlengröße_pixel // 2)  # Dynamische Schriftgröße, min. 10px
+                font = ImageFont.truetype("arial.ttf", font_size)  # Arial oder andere Schriftart
+
+                
+                draw.text(
+                    (x + perlengröße_pixel // 2, y + perlengröße_pixel // 2), 
+                    str(farb_nummer), 
+                    fill=textfarbe, 
+                    font=font, 
+                    anchor="mm"  # Zentriert die Zahl auf der Perle
+                )
+        self._verwendete_farben = farb_mapping   
 
     def _save_image(self):
         """
@@ -262,7 +293,11 @@ class GenerateDiamondperls:
             None
         """
         """Speichert das Bild mit Perlen."""
-        self._bild.save(self._input_file_name.replace(f'.{self._image_file_type}', f'_diamond_perls.{self._image_file_type}'))
+        self._bild.save(
+            self._input_file_name.replace(
+                f".{self._image_file_type}", f"_diamond_perls.{self._image_file_type}"
+            )
+        )
 
     def _show_image(self):
         """
@@ -274,7 +309,7 @@ class GenerateDiamondperls:
         """Zeigt das Bild an."""
         self._bild.show()
 
-    def _save_colors_to_textfile(self):
+    def _create_colors_textfile(self):
         """
         Writes the list of used RAL colors to a text file.
 
@@ -286,42 +321,57 @@ class GenerateDiamondperls:
         """
         """Schreibt die Liste der verwendeten RAL-Farben in eine Textdatei."""
         with open(
-            self._input_file_name.replace(f".{self._image_file_type}", 
-                                        "_verwendete_farben.txt"), 
-                                        "w", 
-                                        encoding='utf-8'
+            self._input_file_name.replace(
+                f".{self._image_file_type}", "_verwendete_farben.txt"
+            ),
+            "w",
+            encoding="utf-8",
         ) as file:
-            for farbe, bezeichnung in self._verwendete_farben:
-                file.write(f"{farbe} {bezeichnung}\n")
-    
-    def _create_colors_pdf_file(self,):
-        output_pdf = f'{self._input_file_name.replace(f".{self._image_file_type}","_verwendete_farben.pdf")}'
-        doc = SimpleDocTemplate(output_pdf, pagesize=letter)
-    
-        # Erstelle den Inhalt (Text und die Tabelle mit Farbnamen und Farbcodes)
-        data = [["Farben", "Farbname"]]  # Tabellenkopf
-        for farbe in self._verwendete_farben:
-            # Hier kannst du die Farben zusammen mit dem Farbnamen und einem Platzhalter für den RGB-Code hinzufügen
-            data.append([farbe[0], farbe[1]])
+            for nummer, (index, name, rgb) in self._verwendete_farben.items():
+                file.write(
+                    f"{index}. {nummer} - {name} (RGB: {rgb[0]}, {rgb[1]}, {rgb[2]})\n"
+                )
 
-        # Definiere die Stilvorlagen für die Tabelle
-        table_style = TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ])
-        
-        # Erstelle die Tabelle
-        table = Table(data)
-        table.setStyle(table_style)
+    def _create_colors_pdf_file(self):
+        """
+        Erstellt eine PDF-Datei aus einer Textdatei.
 
-        # Baue das Dokument
-        doc.build([table])
-        
+        Args:
+            txt_datei (str): Name der Textdatei.
+            pdf_datei (str): Name der PDF-Datei.
+
+        Returns:
+            None
+        """
+
+        pdf_datei = self._input_file_name.replace(
+            f".{self._image_file_type}", "_verwendete_farben.pdf"
+        )
+        txt_datei = self._input_file_name.replace(
+            f".{self._image_file_type}", "_verwendete_farben.txt"
+        )
+        # Neue PDF-Datei erstellen
+        c = canvas.Canvas(pdf_datei, pagesize=A4)
+        (width, height) = A4
+
+        # Text aus Datei lesen
+        with open(txt_datei, "r", encoding="utf-8") as file:
+            lines = file.readlines()
+
+        # Startposition für Text
+        y_position = height - 50  # Abstand von oben
+
+        for line in lines:
+            if y_position < 50:  # Falls die Seite voll ist, neue Seite
+                c.showPage()
+                y_position = height - 50
+
+            c.drawString(50, y_position, line.strip())  # Text zeichnen
+            y_position -= 20  # Zeilenabstand
+
+        # PDF speichern
+        c.save()
+
     def generate(self):
         """
         Generates a diamond image, processes it by drawing pearls, and saves the results.
@@ -339,6 +389,6 @@ class GenerateDiamondperls:
         self._zeichne_perlen()
         self._show_image()
         self._save_image()
-        self._save_colors_to_textfile()
+        self._create_colors_textfile()
         self._create_colors_pdf_file()
         return self._bild

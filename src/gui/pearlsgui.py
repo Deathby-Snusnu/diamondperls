@@ -142,10 +142,10 @@ class DiamondPerlsApp(tk.Tk):
         try:
             generator.generate()
             messagebox.showinfo("Success", "Diamond Perls generated successfully!")
+        
         except FileNotFoundError:
             messagebox.showerror("Error", "The selected file was not found.")
         except PermissionError:
             messagebox.showerror("Error", "Permission denied. Check file access rights.")
         except Exception as e:
-            messagebox.showerror("Error", f"An unexpected error occurred: {e}")
-            
+            messagebox.showerror("Error", f"An unexpected error occurred: {e}") 
