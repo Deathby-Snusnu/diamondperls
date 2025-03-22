@@ -2,6 +2,10 @@ import csv
 import sys
 import os
 
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+
 from PIL import Image, ImageDraw, ImageStat
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -282,18 +286,41 @@ class GenerateDiamondperls:
         """
         """Schreibt die Liste der verwendeten RAL-Farben in eine Textdatei."""
         with open(
-            self._input_file_name.replace(f".{self._image_file_type}", "_verwendete_farben.txt"), "w", encoding='utf-8'
+            self._input_file_name.replace(f".{self._image_file_type}", 
+                                        "_verwendete_farben.txt"), 
+                                        "w", 
+                                        encoding='utf-8'
         ) as file:
             for farbe, bezeichnung in self._verwendete_farben:
                 file.write(f"{farbe} {bezeichnung}\n")
     
-    def _create_colors_pdf_file(self):
-        pass
-        # TODO: Implementieren
-        # TODO: 1. Lade Text Datei
-        # TODO: 2. erzeuge PDF mit einer Tabelle mit dem Farbnamen, evt. den RAL Wert und der Farbe
-        # TODO: 3. PDF Speichern als > self._input_file_name.replace(".jpg", _farben.pdf)
-        # FIXME: Hier ebenfalls berücksichtigen das evtl. ein anderes Bildformat als .jpg geladen wurde
+    def _create_colors_pdf_file(self,):
+        output_pdf = f'{self._input_file_name.replace(f".{self._image_file_type}","_verwendete_farben.pdf")}'
+        doc = SimpleDocTemplate(output_pdf, pagesize=letter)
+    
+        # Erstelle den Inhalt (Text und die Tabelle mit Farbnamen und Farbcodes)
+        data = [["Farben", "Farbname"]]  # Tabellenkopf
+        for farbe in self._verwendete_farben:
+            # Hier kannst du die Farben zusammen mit dem Farbnamen und einem Platzhalter für den RGB-Code hinzufügen
+            data.append([farbe[0], farbe[1]])
+
+        # Definiere die Stilvorlagen für die Tabelle
+        table_style = TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ])
+        
+        # Erstelle die Tabelle
+        table = Table(data)
+        table.setStyle(table_style)
+
+        # Baue das Dokument
+        doc.build([table])
         
     def generate(self):
         """
