@@ -7,7 +7,7 @@ from PIL import Image, ImageDraw, ImageStat
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from config.paper_size import FORMATE_MM
-from config.pathnames import RAL_FILE_NAME #DATA_PATH
+from config.pathnames import DMC_FILE_NAME #DATA_PATH
 from config.const import DPI, PERLEN_GROESSE, FARBBEREICH, FORMAT, MM_PRO_INCH
 
 # FIXME: !!!! Wenn eine Datei, die KEIN .jpg ist verwendet wird muss die entsprechende Erweiterung KORREKT verwendet werden !!!!
@@ -75,7 +75,7 @@ class GenerateDiamondperls:
         self._formate_mm: dict = FORMATE_MM
         self._breite_px: int = round(self._formate_mm[self._format][0] * self._dpi / MM_PRO_INCH)
         self._höhe_px: int = round(self._formate_mm[self._format][1] * self._dpi / MM_PRO_INCH)
-        self._lade_RAL_farben()
+        self._lade_DMC_farben()
         self._lade_bild()
 
     def _berechne_durchschnittsfarbe(self, teilbild):
@@ -92,64 +92,64 @@ class GenerateDiamondperls:
         stat = ImageStat.Stat(teilbild)
         return tuple(int(c) for c in stat.mean[:3])
 
-    def _lade_RAL_farben(self):
+    def _lade_DMC_farben(self):
         """
-        Loads RAL colors from a CSV file and stores them in a dictionary.
+        Loads DMC colors from a CSV file and stores them in a dictionary.
 
-        The method reads a CSV file specified by the `RAL_FILE_NAME` constant. Each row in the file
+        This method reads a CSV file specified by the `DMC_FILE_NAME` constant. Each row in the file
         is expected to contain the following data:
-        - Column 0: RAL number (used as the key in the dictionary).
-        - Column 1: RGB values in the format "R-G-B" (e.g., "255-255-255").
-        - Column 6: Color name.
+        - Column 0: DMC number (used as the key in the dictionary).
+        - Column 1: Color name.
+        - Columns 2-4: RGB values in the format "R-G-B" (e.g., "255-255-255").
 
-        The loaded data is stored in the `_RAL_farben` attribute as a dictionary where:
-        - The key is the RAL number (string).
+        The loaded data is stored in the `_DMC_farben` attribute as a dictionary where:
+        - The key is the DMC number (string).
         - The value is a tuple containing:
             - A tuple of RGB values (integers).
             - The color name (string).
-
-        Assumes the CSV file has a header row, which is skipped during processing.
-
-        Raises:
-            ValueError: If the RGB values in the CSV file cannot be converted to integers.
-            FileNotFoundError: If the specified CSV file does not exist.
-            IOError: If there is an error reading the file.
         """
-        """Lädt RAL-Farben aus einer CSV-Datei."""
-        self._RAL_farben: dict = {}
-        with open(RAL_FILE_NAME, "r", encoding="utf-8") as file:
-            reader = csv.reader(file)
-            next(reader)  # Header überspringen
-            for row in reader:
-                ral_nummer: str = row[0]
-                farb_name: str = row[6]
-                try:
-                    r, g, b = map(int, row[1].split("-"))
-                except ValueError:
-                    print(f"Fehlerhafte RGB-Werte in Zeile: {row}")
-                    continue
+        self._DMC_farben = {}
+        try:
+            with open(DMC_FILE_NAME, "r", encoding="utf-8") as file:
+                reader = csv.reader(file)
+                next(reader)  # Skip header
+                for row in reader:
+                    dmc_nummer = row[0]
+                    farb_name = row[1]
+                    try:
+                        r, g, b = map(int, row[2:5])  # Convert RGB values from string to integers
+                    except ValueError:
+                        print(f"Fehlerhafte RGB-Werte in Zeile: {row}")
+                        continue
 
-                self._RAL_farben[ral_nummer] = ((r, g, b), farb_name)
+                    self._DMC_farben[dmc_nummer] = ((r, g, b), farb_name)
+        except FileNotFoundError:
+            print(f"Die Datei {DMC_FILE_NAME} wurde nicht gefunden.")
+        except IOError as e:
+            print(f"Fehler beim Lesen der Datei {DMC_FILE_NAME}: {e}")
 
-    def _finde_nächste_ral_farbe(self, rgb):
+    def _finde_nächste_dmc_farbe(self, rgb):
         """
-        Finds the RAL color with the smallest Euclidean distance to the given RGB value.
+        Finds the DMC color with the smallest Euclidean distance to the given RGB value.
 
         Args:
-            rgb (tuple): A tuple containing the RGB values as integers (r, g, b).
+            rgb (tuple): A tuple with the RGB values as integers (r, g, b).
 
         Returns:
-            tuple: A tuple containing the RAL color code and its corresponding RGB value.
+            tuple: A tuple with the DMC color number, RGB values, and the color name.
         """
-        """Findet die RAL-Farbe mit der kleinsten euklidischen Distanz zum gegebenen RGB-Wert."""
         r, g, b = rgb
-        nächster_ral: tuple[str, tuple[tuple[int, int, int], str]] = min(
-            self._RAL_farben.items(),
-            key=lambda item: (item[1][0][0] - r) ** 2
-            + (item[1][0][1] - g) ** 2
-            + (item[1][0][2] - b) ** 2,
+        nächster_dmc = min(
+            self._DMC_farben.items(),
+            key=lambda item: (item[1][0][0] - r) ** 2  # R
+                            + (item[1][0][1] - g) ** 2  # G
+                            + (item[1][0][2] - b) ** 2  # B
         )
-        return nächster_ral
+        dmc_nummer = nächster_dmc[0]
+        rgb_farbe = nächster_dmc[1][0]  # RGB values of the closest DMC color
+        farb_name = nächster_dmc[1][1]  # Color name
+        return dmc_nummer, rgb_farbe, farb_name
+
 
     def _lade_bild(self):
         """
@@ -207,64 +207,45 @@ class GenerateDiamondperls:
         
 
     def _zeichne_perlen(self):
-        """
-        Draws beads (perlen) onto the image based on the specified bead size and color mapping.
-        This method processes the image in a grid-like manner, dividing it into sections
-        corresponding to the size of the beads. For each section, it calculates the color
-        (either the average color or the color of the center pixel) and maps it to the nearest
-        RAL color. The bead is then drawn as an ellipse on the image with the mapped RAL color.
-        Attributes:
-            self._bild (Image): The image on which the beads are drawn.
-            self._dpi (int): The resolution of the image in dots per inch.
-            self._perlen_groesse (float): The size of the beads in millimeters.
-            self._breite (int): The width of the image in pixels.
-            self._länge (int): The height of the image in pixels.
-            self._durchschnitt_farbe_berechnen (bool): Whether to calculate the average color
-                of each bead section or use the center pixel's color.
-            self.verwendete_farben (set): A set to store the RAL colors used in the image.
-        Steps:
-            1. Calculate the bead size in pixels based on the DPI and bead size in millimeters.
-            2. Iterate over the image in a grid pattern based on the bead size.
-            3. For each grid section:
-                a. Crop the section from the image.
-                b. Calculate the color (average or center pixel).
-                c. Map the color to the nearest RAL color.
-                d. Add the RAL color to the set of used colors.
-                e. Draw an ellipse (bead) on the image with the mapped RAL color.
-        """
         """Zeichnet die Perlen ins Bild."""
         draw = ImageDraw.Draw(self._bild)
-        
-        perlengröße_pixel = int(self._dpi * (self._perlen_groesse / MM_PRO_INCH))
+
+        perlengröße_pixel = round(self._dpi * (self._perlen_groesse / MM_PRO_INCH))
         self._verwendete_farben = set()
 
         for x in range(0, self._breite, perlengröße_pixel):
             for y in range(0, self._länge, perlengröße_pixel):
-                # Bereich für die Perle definieren (Sicherstellen, dass wir nicht über das Bild hinausgehen)
-                teilbild = self._bild.crop(
-                    (x, y, x + perlengröße_pixel, y + perlengröße_pixel)
+                crop_box = (
+                    x, 
+                    y, 
+                    min(x + perlengröße_pixel, self._breite), 
+                    min(y + perlengröße_pixel, self._länge)
                 )
+                teilbild = self._bild.crop(crop_box)
 
-                # Durchschnittsfarbe berechnen oder den Mittelpunktpixelwert verwenden
                 if self._durchschnitt_farbe_berechnen:
                     rgb_farbe = self._berechne_durchschnittsfarbe(teilbild)
                 else:
                     rgb_farbe = teilbild.getpixel(
-                        (perlengröße_pixel // 2, perlengröße_pixel // 2)
+                        (min(perlengröße_pixel // 2, teilbild.width - 1), 
+                        min(perlengröße_pixel // 2, teilbild.height - 1))
                     )
 
-                # Nächste RAL-Farbe finden
-                ral_farbe = self._finde_nächste_ral_farbe(rgb_farbe)
-                self._verwendete_farben.add(
-                    (ral_farbe[0], ral_farbe[1][1])
-                )  # Füge die RAL-Nummer zur Liste hinzu
+                # Suchen der nächstgelegenen DMC-Farbe und des Farbnamen
+                dmc_farbe = self._finde_nächste_dmc_farbe(rgb_farbe)
+                dmc_nummer = dmc_farbe[0]
+                rgb = dmc_farbe[1]
+                farb_name = dmc_farbe[2]                
 
-                # Ellipse (Perle) zeichnen
+
+                self._verwendete_farben.add((dmc_nummer, farb_name))  # Speichert sowohl Nummer als auch Name
+
                 draw.ellipse(
                     (x, y, x + perlengröße_pixel, y + perlengröße_pixel),
-                    fill=ral_farbe[1][0],
-                    outline="black",  # Optional: schwarze Umrandung für Perlen
+                    fill=rgb,  # RGB-Tupel direkt verwenden
+                    outline="black",
                 )
+
 
     def _save_image(self):
         """

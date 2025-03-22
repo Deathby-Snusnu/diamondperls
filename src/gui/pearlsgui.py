@@ -148,3 +148,4 @@ class DiamondPerlsApp(tk.Tk):
             messagebox.showerror("Error", "Permission denied. Check file access rights.")
         except Exception as e:
             messagebox.showerror("Error", f"An unexpected error occurred: {e}")
+            
