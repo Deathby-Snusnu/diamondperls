@@ -19,40 +19,47 @@ class GenerateDiamondperls:
     GenerateDiamondperls is a class designed to create a diamond pearl pattern from an input image.
     It processes the image, reduces its color palette, and maps the colors to the closest DMC colors.
     The result is a stylized image with a pearl-like appearance.
+
     Attributes:
-        _durchschnitt_farbe_berechnen (bool): Determines whether to calculate the average color for each block.
+        _is_average_color_calculation_enabled (bool): Determines whether to calculate the average color for each block.
         _input_file_name (str): Path to the input image file.
-        _perlen_groesse (float): Size of the pearls in millimeters.
-        _farben_anzahl (int): Number of colors to reduce the image to.
-        _format (str): Format of the output image (e.g., A4, A3).
-        _dpi (int): Dots per inch for the output image.
-        _formate_mm (dict): Dictionary containing dimensions of formats in millimeters.
-        _breite_px (int): Width of the image in pixels after scaling.
-        _höhe_px (int): Height of the image in pixels after scaling.
-        _DMC_farben (dict): Dictionary of DMC colors loaded from a CSV file.
-        _bild (PIL.Image.Image): The processed image.
-        _breite (int): Width of the processed image.
-        _länge (int): Height of the processed image.
-        _verwendete_farben (set): Set of DMC colors used in the final image.
+        _image_file_type (str): File type of the input image (e.g., jpg, png).
+        _pearl_dimension (float): Size of the pearls in millimeters.
+        _color_variation_count (int): Number of colors to reduce the image to.
+        _output_file_format (str): Format of the output image (e.g., A4, A3).
+        _print_dpi (int): Dots per inch for the output image.
+        _format_sizes_mm (dict): Dictionary containing dimensions of formats in millimeters.
+        _width_in_pixels (int): Width of the image in pixels after scaling.
+        _height_in_pixels (int): Height of the image in pixels after scaling.
+        _dmc_color_palette (dict): Dictionary of DMC colors loaded from a CSV file.
+        _final_image (PIL.Image.Image): The processed image.
+        _image_width (int): Width of the processed image in pixels.
+        _image_height (int): Height of the processed image in pixels.
+        _used_colors (dict): Dictionary of DMC colors used in the final image.
+
     Methods:
-        __init__(input_file_name, perlen_groesse, farben_anzahl, format, dpi, durchschnitt_farbe_berechnen):
+        __init__(input_file_name, pearl_dimension, color_variation_count, output_format, output_dpi, is_average_color_enabled):
             Initializes the class with the given parameters and loads necessary resources.
-        _berechne_durchschnittsfarbe(teilbild):
+        _get_average_color_value(teilbild):
             Calculates the average color of a given image block.
-        _lade_DMC_farben():
+        _load_dmc_colors():
             Loads DMC colors from a CSV file.
-        _finde_nächste_DMC_farbe(rgb):
+        _find_closest_dmc_color(rgb):
             Finds the closest DMC color to a given RGB value using Euclidean distance.
-        _lade_bild():
+        _load_and_process_image():
             Loads the input image, scales it proportionally, and reduces its color palette.
-        _zeichne_perlen():
+        _create_pearl_image():
             Draws pearl-like ellipses on the image based on the processed color data.
         _save_image():
             Saves the final image with the pearl pattern applied.
         _show_image():
             Displays the current state of the image.
+        _create_colors_textfile():
+            Writes the list of used DMC colors to a text file.
+        _create_colors_pdf_file():
+            Creates a PDF file with the list of used DMC colors and their visual representation.
         generate():
-            Generates the diamond pearl pattern, displays the result, and saves the image.
+            Generates the diamond pearl pattern, displays the result, and saves the image along with color information.
     """
 
     def __init__(
@@ -89,13 +96,14 @@ class GenerateDiamondperls:
         """
         Calculates the average color of a given image section (block).
 
+        This method computes the mean RGB values of all pixels within the specified image section.
+
         Args:
-            teilbild (PIL.Image.Image): The image section for which the average color is to be calculated.
+            teilbild (PIL.Image.Image): The image section (block) for which the average color is to be calculated.
 
         Returns:
-            tuple: A tuple of three integers representing the average RGB color values of the image section.
+            tuple: A tuple of three integers representing the average RGB color values (R, G, B) of the image section.
         """
-        """Berechnet die Durchschnittsfarbe eines Bildbereichs (Block)."""
         stat = ImageStat.Stat(teilbild)
         return tuple(int(c) for c in stat.mean[:3])
 
@@ -169,22 +177,24 @@ class GenerateDiamondperls:
 
     def _load_and_process_image(self):
         """
-        Lädt ein Bild, skaliert es proportional, dreht es bei Bedarf und reduziert die Farbpalette.
-        Diese Methode führt folgende Schritte aus:
-        1. Öffnet die Bilddatei, die durch `_input_file_name` angegeben ist, und konvertiert sie in den RGB-Modus.
-        2. Dreht das Bild automatisch um 90 Grad, falls die Dimensionen des Bildes und die Zielmaße nicht übereinstimmen.
-        3. Skaliert das Bild proportional, um innerhalb der durch `_breite_px` und `_höhe_px` angegebenen Zielmaße zu bleiben.
-        4. Füllt das Bild mit weißem Hintergrund auf, falls es kleiner als die Zielmaße ist.
-        5. Reduziert die Farbpalette des Bildes auf `_farben_anzahl` Farben mit einer adaptiven Palette.
-        6. Aktualisiert die Bildmaße (`_breite` und `_länge`) basierend auf dem verarbeiteten Bild.
-        Attribute:
-            _input_file_name (str): Der Dateipfad des Eingabebildes.
-            _breite_px (int): Die maximale Breite des skalierten Bildes in Pixeln.
-            _höhe_px (int): Die maximale Höhe des skalierten Bildes in Pixeln.
-            _farben_anzahl (int): Die Anzahl der Farben, die in der adaptiven Palette verwendet werden.
-            _bild (Image): Das verarbeitete Bildobjekt.
-            _breite (int): Die Breite des verarbeiteten Bildes in Pixeln.
-            _länge (int): Die Höhe des verarbeiteten Bildes in Pixeln.
+        Loads an image, scales it proportionally, rotates it if necessary, and reduces its color palette.
+
+        This method performs the following steps:
+        1. Opens the image file specified by `_input_file_name` and converts it to RGB mode.
+        2. Automatically rotates the image by 90 degrees if its dimensions do not match the target dimensions.
+        3. Scales the image proportionally to fit within the target dimensions specified by `_width_in_pixels` and `_height_in_pixels`.
+        4. Fills the image with a white background if it is smaller than the target dimensions.
+        5. Reduces the image's color palette to `_color_variation_count` colors using an adaptive palette.
+        6. Updates the image dimensions (`_image_width` and `_image_height`) based on the processed image.
+
+        Attributes:
+            _input_file_name (str): The file path of the input image.
+            _width_in_pixels (int): The maximum width of the scaled image in pixels.
+            _height_in_pixels (int): The maximum height of the scaled image in pixels.
+            _color_variation_count (int): The number of colors to use in the adaptive palette.
+            _final_image (Image): The processed image object.
+            _image_width (int): The width of the processed image in pixels.
+            _image_height (int): The height of the processed image in pixels.
         """
         try:
             try:
@@ -233,19 +243,30 @@ class GenerateDiamondperls:
         self._image_width, self._image_height = self._final_image.size
 
     def _create_pearl_image(self) -> None:
+        """Generates an image with pearls drawn based on processed color data.
+        This method processes the image in blocks of a size determined by the pearl dimensions in millimeters 
+        and the print DPI. For each block, it calculates the representative color, maps it to the closest DMC 
+        color, and draws a pearl (ellipse) with the corresponding color. Each pearl is also numbered, and the 
+        number is drawn on top of the pearl.
+        The numbering is based on unique DMC colors, and the text color for the number is dynamically adjusted 
+        based on the luminance of the pearl's color to ensure readability.
+            perlengröße_pixel (int): The size of the pearls in pixels, calculated from the print DPI and pearl dimensions.
+            zähler (int): Counter for numbering the pearls, incremented for each unique DMC color.
+            farb_mapping (dict): A mapping of DMC color codes to their assigned numbers, names, and RGB values.
+        Steps:
+            1. Iterate over the image in blocks of size `perlengröße_pixel`.
+            2. For each block, calculate the representative color (average or center pixel).
+            3. Map the color to the closest DMC color using a predefined mapping.
+            4. Draw a pearl (ellipse) with the mapped DMC color.
+            5. Assign a unique number to the DMC color if it hasn't been assigned yet.
+            6. Draw the number on the pearl, adjusting the text color for readability.
+            7. Store the used DMC colors and their mappings in the class attribute `_used_colors`.
+        Notes:
+            - The font size for the numbers is dynamically calculated based on the pearl size, with a minimum size of 10px.
+            - If the Arial font is unavailable, a default font is used as a fallback.
+            - The method ensures that the numbering and color mapping are consistent across the entire image.
         """
-        Draws pearls on the image based on the processed color data.
-
-        This method iterates over the image in blocks of size determined by the pearl size in pixels.
-        For each block, it calculates the average color or picks the center pixel color, maps it to the
-        closest DMC color, and draws a pearl (ellipse) with the corresponding color. It also numbers
-        the pearls and writes the number on top of each pearl.
-
-        Attributes:
-            perlengröße_pixel (int): The size of the pearls in pixels.
-            zähler (int): Counter for numbering the pearls.
-            farb_mapping (dict): A mapping of DMC color numbers to their assigned numbers, names, and RGB values.
-        """
+        
         draw = ImageDraw.Draw(self._final_image)
 
         # Calculate pearl size in pixels
@@ -368,8 +389,15 @@ class GenerateDiamondperls:
 
     def _create_colors_pdf_file(self):
         """
-        Erstellt eine PDF-Datei aus einer Textdatei und zeigt Farben als Hintergrund
-        für die Textzeilen an.
+        Creates a PDF file from a text file and displays colors as the background
+        for the text lines.
+
+        This method reads a text file containing color information, including DMC color codes,
+        names, and RGB values. It then generates a PDF file where each line of text is displayed
+        with a background color corresponding to the RGB values of the color.
+
+        The method dynamically adjusts the text color (black or white) based on the luminance
+        of the background color to ensure readability.
 
         Args:
             None
