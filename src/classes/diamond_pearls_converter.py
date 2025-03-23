@@ -285,16 +285,7 @@ class GenerateDiamondperls:
                 )
                 cropped_image: Image.Image = self._final_image.crop(crop_box)
 
-                # Calculate the average color or use the center pixel color
-                if self._is_average_color_calculation_enabled:
-                    rgb_color_value = self._get_average_color_value(cropped_image)
-                else:
-                    rgb_color_value = cropped_image.getpixel(
-                        (
-                            min(pearl_size_in_pixels // 2, cropped_image.width - 1),
-                            min(pearl_size_in_pixels // 2, cropped_image.height - 1),
-                        )
-                    )
+                rgb_color_value = self._find_color(cropped_image, pearl_size_in_pixels)
 
                 # Find the closest DMC color
                 mapped_dmc_color: tuple = self._find_closest_dmc_color(rgb_color_value)
@@ -340,6 +331,19 @@ class GenerateDiamondperls:
 
         # Store the used colors in the class attribute
         self._used_colors: dict = dmc_color_mapping
+
+    def _find_color(self, cropped_image, pearl_size_in_pixels):
+        # Calculate the average color or use the center pixel color
+        if self._is_average_color_calculation_enabled:
+            rgb_color_value = self._get_average_color_value(cropped_image)
+        else:
+            rgb_color_value = cropped_image.getpixel(
+                (
+                    min(pearl_size_in_pixels // 2, cropped_image.width - 1),
+                    min(pearl_size_in_pixels // 2, cropped_image.height - 1),
+                )
+            )
+        return rgb_color_value
 
     def _save_image(self):
         """
