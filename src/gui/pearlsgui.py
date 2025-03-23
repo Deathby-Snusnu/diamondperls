@@ -3,7 +3,7 @@ import os
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 
-# Sicherstellen, dass das Modul gefunden wird
+# Ensure the module can be found
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 try:
@@ -18,7 +18,7 @@ except ModuleNotFoundError as e:
 
 class DiamondPerlsApp(tk.Tk):
     """
-    A GUI application for generating diamond perls using user-defined settings.
+    A GUI application for generating diamond pearls using user-defined settings.
     """
 
     def __init__(self) -> None:
@@ -141,7 +141,7 @@ class DiamondPerlsApp(tk.Tk):
 
     def generate_diamond_perls(self) -> None:
         """
-        Generate diamond perls based on the user-defined settings.
+        Generate diamond pearls based on the user-defined settings.
         """
         input_file: str = self.file_entry.get()
         color_depth: int = int(self.color_depth_var.get())
@@ -175,5 +175,3 @@ class DiamondPerlsApp(tk.Tk):
             )
         except Exception as e:
             messagebox.showerror("Error", f"An unexpected error occurred: {e}")
-        
-       

@@ -13,6 +13,7 @@ from config.paper_size import FORMATE_MM
 from config.pathnames import DMC_FILE_NAME  # DATA_PATH
 from config.const import DPI, PERLEN_GROESSE, FARBBEREICH, FORMAT, MM_PRO_INCH
 
+
 class GenerateDiamondperls:
     """
     GenerateDiamondperls is a class designed to create a diamond pearl pattern from an input image.
@@ -214,24 +215,39 @@ class GenerateDiamondperls:
 
         self._breite, self._länge = self._bild.size
 
-    def _zeichne_perlen(self):
-        """Zeichnet die Perlen ins Bild."""
+    def _zeichne_perlen(self) -> None:
+        """
+        Draws pearls on the image based on the processed color data.
+
+        This method iterates over the image in blocks of size determined by the pearl size in pixels.
+        For each block, it calculates the average color or picks the center pixel color, maps it to the
+        closest DMC color, and draws a pearl (ellipse) with the corresponding color. It also numbers
+        the pearls and writes the number on top of each pearl.
+
+        Attributes:
+            perlengröße_pixel (int): The size of the pearls in pixels.
+            zähler (int): Counter for numbering the pearls.
+            farb_mapping (dict): A mapping of DMC color numbers to their assigned numbers, names, and RGB values.
+        """
         draw = ImageDraw.Draw(self._bild)
 
-        perlengröße_pixel = round(self._dpi * (self._perlen_groesse / MM_PRO_INCH))
-        zähler = 1  # Startwert für die Nummerierung
-        farb_mapping = {}  # Speichert die Farbe und die zugehörige Nummer
+        # Calculate pearl size in pixels
+        perlengröße_pixel: int = round(self._dpi * (self._perlen_groesse / MM_PRO_INCH))
+        zähler: int = 1  # Start value for numbering
+        farb_mapping: dict = {}  # Stores the color and its corresponding number
 
         for x in range(0, self._breite, perlengröße_pixel):
             for y in range(0, self._länge, perlengröße_pixel):
-                crop_box = (
+                # Define the crop box for the current block
+                crop_box: tuple = (
                     x,
                     y,
                     min(x + perlengröße_pixel, self._breite),
                     min(y + perlengröße_pixel, self._länge),
                 )
-                teilbild = self._bild.crop(crop_box)
+                teilbild: Image.Image = self._bild.crop(crop_box)
 
+                # Calculate the average color or use the center pixel color
                 if self._durchschnitt_farbe_berechnen:
                     rgb_farbe = self._berechne_durchschnittsfarbe(teilbild)
                 else:
@@ -242,50 +258,50 @@ class GenerateDiamondperls:
                         )
                     )
 
-                # Suchen der nächstgelegenen DMC-Farbe
-                dmc_farbe = self._finde_nächste_dmc_farbe(rgb_farbe)
-                dmc_nummer = dmc_farbe[0]
-                rgb = dmc_farbe[1]
+                # Find the closest DMC color
+                dmc_farbe: tuple = self._finde_nächste_dmc_farbe(rgb_farbe)
+                dmc_nummer: str = dmc_farbe[0]
+                rgb: tuple = dmc_farbe[1]
                 r, g, b = rgb
 
-                # Berechnung der Helligkeit der Perlenfarbe
-                luminance = 0.299 * r + 0.587 * g + 0.114 * b
+                # Calculate luminance to determine text color
+                luminance: float = 0.299 * r + 0.587 * g + 0.114 * b
+                textfarbe: tuple = (0, 0, 0) if luminance > 128 else (255, 255, 255)
 
-                # Wähle die Textfarbe basierend auf der Helligkeit der Perlenfarbe
-                if luminance > 128:  # Helle Farbe, also dunkler Text
-                    textfarbe = (0, 0, 0)  # Schwarzer Text
-                else:  # Dunkle Farbe, also heller Text
-                    textfarbe = (255, 255, 255)  # Weißer Text
-
-                # Falls die Farbe noch nicht existiert, eine neue Nummer vergeben
+                # Assign a new number if the color is not already mapped
                 if dmc_nummer not in farb_mapping:
                     farb_mapping[dmc_nummer] = (zähler, dmc_farbe[2], rgb)
-                    zähler += 1  # Nur erhöhen, wenn eine neue Farbe gefunden wird
+                    zähler += 1
 
-                farb_nummer = farb_mapping[dmc_nummer][0]
+                farb_nummer: int = farb_mapping[dmc_nummer][0]
 
+                # Draw the pearl (ellipse)
                 draw.ellipse(
                     (x, y, x + perlengröße_pixel, y + perlengröße_pixel),
-                    fill=rgb,  # RGB-Tupel direkt verwenden
+                    fill=rgb,  # Use the RGB tuple directly
                     outline="black",
                 )
 
-                font_size = max(
-                    10, perlengröße_pixel // 2
-                )  # Dynamische Schriftgröße, min. 10px
-                font = ImageFont.truetype(
-                    "arial.ttf", font_size
-                )  # Arial oder andere Schriftart
+                # Determine font size dynamically, with a minimum size of 10px
+                font_size: int = max(10, perlengröße_pixel // 2)
+                try:
+                    font = ImageFont.truetype(
+                        "arial.ttf", font_size
+                    )
+                except IOError:
+                    font = ImageFont.load_default()  # Fallback to default font if Arial is unavailable
 
+                # Draw the number on the pearl
                 draw.text(
                     (x + perlengröße_pixel // 2, y + perlengröße_pixel // 2),
                     str(farb_nummer),
                     fill=textfarbe,
                     font=font,
-                    anchor="mm",  # Zentriert die Zahl auf der Perle
+                    anchor="mm",  # Center the number on the pearl
                 )
 
-        self._verwendete_farben = farb_mapping
+        # Store the used colors in the class attribute
+        self._verwendete_farben: dict = farb_mapping
 
     def _save_image(self):
         """
@@ -298,11 +314,10 @@ class GenerateDiamondperls:
             None
         """
         """Speichert das Bild mit Perlen."""
-        self._bild.save(
-            self._input_file_name.replace(
-                f".{self._image_file_type}", f"_diamond_perls.{self._image_file_type}"
-            )
+        filename = self._input_file_name.replace(
+            f".{self._image_file_type}", f"_diamond_perls.{self._image_file_type}"
         )
+        self._bild.save(filename)
 
     def _show_image(self):
         """
@@ -325,19 +340,14 @@ class GenerateDiamondperls:
             None
         """
         """Schreibt die Liste der verwendeten DMC-Farben in eine Textdatei."""
-        with open(
-            self._input_file_name.replace(
-                f".{self._image_file_type}", "_verwendete_farben.txt"
-            ),
-            "w",
-            encoding="utf-8",
-        ) as file:
+        filename = self._input_file_name.replace(
+            f".{self._image_file_type}", "_verwendete_farben.txt"
+        )
+        with open(filename, "w", encoding="utf-8") as file:
             for nummer, (index, name, rgb) in self._verwendete_farben.items():
                 file.write(
                     f"{index}. {nummer} - {name} (RGB: {rgb[0]}, {rgb[1]}, {rgb[2]})\n"
                 )
-
-
 
     def _create_colors_pdf_file(self):
         """
@@ -382,7 +392,7 @@ class GenerateDiamondperls:
                 y_position = height - 50
 
             # Zerlege die Zeile in die Teile (z.B. Nummer, Name, RGB)
-            parts = line.strip().split(' - ')
+            parts = line.strip().split(" - ")
 
             if len(parts) >= 2:
                 nummer_beschreibung = parts[0].strip()
@@ -404,22 +414,31 @@ class GenerateDiamondperls:
 
                     # Hintergrundfarbe für die Zelle (Farbe)
                     c.setFillColorRGB(r / 255, g / 255, b / 255)  # Farbe aus RGB setzen
-                    c.rect(x_position, y_position - 10, column_widths[0], 20, fill=1)  # Rechteck als Hintergrund
+                    c.rect(
+                        x_position, y_position - 10, column_widths[0], 20, fill=1
+                    )  # Rechteck als Hintergrund
 
                     # Text mit der passenden Farbe schreiben
-                    c.setFillColorRGB(text_color[0] / 255, text_color[1] / 255, text_color[2] / 255)
-                    c.drawString(x_position + 5, y_position, nummer_beschreibung)  # Nummer
+                    c.setFillColorRGB(
+                        text_color[0] / 255, text_color[1] / 255, text_color[2] / 255
+                    )
+                    c.drawString(
+                        x_position + 5, y_position, nummer_beschreibung
+                    )  # Nummer
 
                     # Beschreibenden Text (Name der Farbe)
                     c.setFillColorRGB(0, 0, 0)  # Schwarz für den Farbnamen
-                    c.drawString(x_position + column_widths[0] + 5, y_position, farbe_beschreibung)  # Farbbeschreibung
+                    c.drawString(
+                        x_position + column_widths[0] + 5,
+                        y_position,
+                        farbe_beschreibung,
+                    )  # Farbbeschreibung
 
                     # Position für die nächste Zeile
                     y_position -= 30  # Zeilenabstand
 
         # PDF speichern
         c.save()
-
 
     def generate(self):
         """
