@@ -58,34 +58,34 @@ class GenerateDiamondperls:
     def __init__(
         self,
         input_file_name,
-        perlen_groesse=PERLEN_GROESSE,
-        farben_anzahl=FARBBEREICH,
-        format=FORMAT,
-        dpi=DPI,
-        durchschnitt_farbe_berechnen=False,
+        pearl_dimension=PERLEN_GROESSE,
+        color_variation_count=FARBBEREICH,
+        output_format=FORMAT,
+        output_dpi=DPI,
+        is_average_color_enabled=False,
     ):
-        self._durchschnitt_farbe_berechnen: bool = durchschnitt_farbe_berechnen
+        self._is_average_color_calculation_enabled: bool = is_average_color_enabled
         self._input_file_name: str = f"{input_file_name}"
         self._image_file_type: str = self._input_file_name.rsplit(".", 1)[-1].lower()
-        self._perlen_groesse: float = perlen_groesse
-        self._farben_anzahl: int = farben_anzahl
-        self._format: str = format
-        self._dpi: int = dpi
-        self._formate_mm: dict = FORMATE_MM
-        self._breite_px: int = round(
-            self._formate_mm[self._format][0] * self._dpi / MM_PRO_INCH
+        self._pearl_dimension: float = pearl_dimension
+        self._color_variation_count: int = color_variation_count
+        self._output_file_format: str = output_format
+        self._print_dpi: int = output_dpi
+        self._format_sizes_mm: dict = FORMATE_MM
+        self._width_in_pixels: int = round(
+            self._format_sizes_mm[self._output_file_format][0] * self._print_dpi / MM_PRO_INCH
         )    
-        self._höhe_px: int = round(
-            self._formate_mm[self._format][1] * self._dpi / MM_PRO_INCH
+        self._height_in_pixels: int = round(
+            self._format_sizes_mm[self._output_file_format][1] * self._print_dpi / MM_PRO_INCH
         )
-        self._verwendete_farben: dict = {}
+        self._used_colors: dict = {}
         try:
-            self._lade_DMC_farben()
-            self._lade_bild()
+            self._load_dmc_colors()
+            self._load_and_process_image()
         except Exception as e:
             raise RuntimeError(f"Fehler beim Laden der DMC-Farben oder des Bildes: {e}")
 
-    def _berechne_durchschnittsfarbe(self, teilbild):
+    def _get_average_color_value(self, teilbild):
         """
         Calculates the average color of a given image section (block).
 
@@ -99,7 +99,7 @@ class GenerateDiamondperls:
         stat = ImageStat.Stat(teilbild)
         return tuple(int(c) for c in stat.mean[:3])
 
-    def _lade_DMC_farben(self):
+    def _load_dmc_colors(self):
         """
         Loads DMC colors from a CSV file and stores them in a dictionary.
 
@@ -115,14 +115,14 @@ class GenerateDiamondperls:
             - A tuple of RGB values (integers).
             - The color name (string).
         """
-        self._DMC_farben = {}
+        self._dmc_color_palette = {}
         try:
             with open(DMC_FILE_NAME, "r", encoding="utf-8") as file:
                 reader = csv.reader(file)
                 next(reader)  # Skip header
                 for row in reader:
-                    dmc_nummer = row[0]
-                    farb_name = row[1]
+                    dmc_number = row[0]
+                    color_name = row[1]
                     try:
                         r, g, b = map(
                             int, row[2:5]
@@ -131,7 +131,7 @@ class GenerateDiamondperls:
                         raise ValueError(f"Fehlerhafte RGB-Werte in Zeile: {row} {e}")
                         
 
-                    self._DMC_farben[dmc_nummer] = ((r, g, b), farb_name)
+                    self._dmc_color_palette[dmc_number] = ((r, g, b), color_name)
         except FileNotFoundError as e:
             raise FileNotFoundError(f"Die Datei {DMC_FILE_NAME} wurde nicht gefunden. {e}")
         except IOError as e:
@@ -153,21 +153,21 @@ class GenerateDiamondperls:
             self._dmc_cache = {}
 
         if rgb in self._dmc_cache:
-            nächster_dmc = self._dmc_cache[rgb]
+            closest_dmc = self._dmc_cache[rgb]
         else:
-            nächster_dmc = min(
-                self._DMC_farben.items(),
+            closest_dmc = min(
+                self._dmc_color_palette.items(),
                 key=lambda item: (item[1][0][0] - r) ** 2  # R
                 + (item[1][0][1] - g) ** 2  # G
                 + (item[1][0][2] - b) ** 2,  # B
             )
-            self._dmc_cache[rgb] = nächster_dmc  # Cache the result
-        dmc_nummer = nächster_dmc[0]
-        rgb_farbe = nächster_dmc[1][0]  # RGB values of the closest DMC color
-        farb_name = nächster_dmc[1][1]  # Color name
-        return dmc_nummer, rgb_farbe, farb_name
+            self._dmc_cache[rgb] = closest_dmc  # Cache the result
+        dmc_color_id = closest_dmc[0]
+        matching_rgb_values = closest_dmc[1][0]  # RGB values of the closest DMC color
+        color_name = closest_dmc[1][1]  # Color name
+        return dmc_color_id, matching_rgb_values, color_name
 
-    def _lade_bild(self):
+    def _load_and_process_image(self):
         """
         Lädt ein Bild, skaliert es proportional, dreht es bei Bedarf und reduziert die Farbpalette.
         Diese Methode führt folgende Schritte aus:
@@ -188,7 +188,7 @@ class GenerateDiamondperls:
         """
         try:
             try:
-                self._bild = Image.open(self._input_file_name).convert("RGB")
+                self._final_image = Image.open(self._input_file_name).convert("RGB")
             except Image.UnidentifiedImageError as e:
                 raise RuntimeError(f"Das Bild konnte nicht identifiziert werden: {e}")
         except FileNotFoundError as e:
@@ -196,43 +196,43 @@ class GenerateDiamondperls:
         except Exception as e:
             raise Exception(f'Ein Problem ist aufgetreten: {e}')
         # Originalgröße des Bildes
-        orig_breite, orig_höhe = self._bild.size
-        ziel_breite, ziel_höhe = self._breite_px, self._höhe_px
+        original_width, original_height = self._final_image.size
+        target_width, target_height = self._width_in_pixels, self._height_in_pixels
 
         # **Automatische Drehung für maximale Abdeckung**
-        if (orig_breite < orig_höhe and ziel_breite > ziel_höhe) or (
-            orig_breite > orig_höhe and ziel_breite < ziel_höhe
+        if (original_width < original_height and target_width > target_height) or (
+            original_width > original_height and target_width < target_height
         ):
-            self._bild = self._bild.rotate(90, expand=True)
-            orig_breite, orig_höhe = (
-                self._bild.size
+            self._final_image = self._final_image.rotate(90, expand=True)
+            original_width, original_height = (
+                self._final_image.size
             )  # Neue Größe nach Rotation aktualisieren
 
         # **Skalierung mit Erhaltung des Seitenverhältnisses**
-        skalierungsfaktor = min(ziel_breite / orig_breite, ziel_höhe / orig_höhe)
-        neue_breite = int(orig_breite * skalierungsfaktor)
-        neue_höhe = int(orig_höhe * skalierungsfaktor)
+        scaling_factor = min(target_width / original_width, target_height / original_height)
+        scaled_width = int(original_width * scaling_factor)
+        scaled_height = int(original_height * scaling_factor)
 
         # Bild proportional skalieren
-        self._bild = self._bild.resize(
-            (neue_breite, neue_höhe), Image.Resampling.LANCZOS
+        self._final_image = self._final_image.resize(
+            (scaled_width, scaled_height), Image.Resampling.LANCZOS
         )
 
         # **Falls das Bild kleiner ist, weiß auffüllen**
-        neues_bild = Image.new("RGB", (ziel_breite, ziel_höhe), (255, 255, 255))
-        position = ((ziel_breite - neue_breite) // 2, (ziel_höhe - neue_höhe) // 2)
-        neues_bild.paste(self._bild, position)
+        filled_background_image = Image.new("RGB", (target_width, target_height), (255, 255, 255))
+        image_position = ((target_width - scaled_width) // 2, (target_height - scaled_height) // 2)
+        filled_background_image.paste(self._final_image, image_position)
 
-        self._bild = neues_bild
+        self._final_image = filled_background_image
 
         # **Farben reduzieren**
-        self._bild = self._bild.convert(
-            "P", palette=Image.Palette.ADAPTIVE, colors=self._farben_anzahl
+        self._final_image = self._final_image.convert(
+            "P", palette=Image.Palette.ADAPTIVE, colors=self._color_variation_count
         ).convert("RGB")
 
-        self._breite, self._länge = self._bild.size
+        self._image_width, self._image_height = self._final_image.size
 
-    def _zeichne_perlen(self) -> None:
+    def _create_pearl_image(self) -> None:
         """
         Draws pearls on the image based on the processed color data.
 
@@ -246,61 +246,61 @@ class GenerateDiamondperls:
             zähler (int): Counter for numbering the pearls.
             farb_mapping (dict): A mapping of DMC color numbers to their assigned numbers, names, and RGB values.
         """
-        draw = ImageDraw.Draw(self._bild)
+        draw = ImageDraw.Draw(self._final_image)
 
         # Calculate pearl size in pixels
-        perlengröße_pixel: int = round(self._dpi * (self._perlen_groesse / MM_PRO_INCH))
-        zähler: int = 1  # Start value for numbering
-        farb_mapping: dict = {}  # Stores the color and its corresponding number
+        pearl_size_in_pixels: int = round(self._print_dpi * (self._pearl_dimension / MM_PRO_INCH))
+        pearl_index: int = 1  # Start value for numbering
+        dmc_color_mapping: dict = {}  # Stores the color and its corresponding number
 
-        for x in range(0, self._breite, perlengröße_pixel):
-            for y in range(0, self._länge, perlengröße_pixel):
+        for x in range(0, self._image_width, pearl_size_in_pixels):
+            for y in range(0, self._image_height, pearl_size_in_pixels):
                 # Define the crop box for the current block
                 crop_box: tuple = (
                     x,
                     y,
-                    min(x + perlengröße_pixel, self._breite),
-                    min(y + perlengröße_pixel, self._länge),
+                    min(x + pearl_size_in_pixels, self._image_width),
+                    min(y + pearl_size_in_pixels, self._image_height),
                 )
-                teilbild: Image.Image = self._bild.crop(crop_box)
+                cropped_image: Image.Image = self._final_image.crop(crop_box)
 
                 # Calculate the average color or use the center pixel color
-                if self._durchschnitt_farbe_berechnen:
-                    rgb_farbe = self._berechne_durchschnittsfarbe(teilbild)
+                if self._is_average_color_calculation_enabled:
+                    rgb_color_value = self._get_average_color_value(cropped_image)
                 else:
-                    rgb_farbe = teilbild.getpixel(
+                    rgb_color_value = cropped_image.getpixel(
                         (
-                            min(perlengröße_pixel // 2, teilbild.width - 1),
-                            min(perlengröße_pixel // 2, teilbild.height - 1),
+                            min(pearl_size_in_pixels // 2, cropped_image.width - 1),
+                            min(pearl_size_in_pixels // 2, cropped_image.height - 1),
                         )
                     )
 
                 # Find the closest DMC color
-                dmc_farbe: tuple = self._find_closest_dmc_color(rgb_farbe)
-                dmc_nummer: str = dmc_farbe[0]
-                rgb: tuple = dmc_farbe[1]
+                mapped_dmc_color: tuple = self._find_closest_dmc_color(rgb_color_value)
+                dmc_color_code: str = mapped_dmc_color[0]
+                rgb: tuple = mapped_dmc_color[1]
                 r, g, b = rgb
 
                 # Calculate luminance to determine text color
-                luminance: float = 0.299 * r + 0.587 * g + 0.114 * b
-                textfarbe: tuple = (0, 0, 0) if luminance > 128 else (255, 255, 255)
+                luminance_value: float = 0.299 * r + 0.587 * g + 0.114 * b
+                text_color: tuple = (0, 0, 0) if luminance_value > 128 else (255, 255, 255)
 
                 # Assign a new number if the color is not already mapped
-                if dmc_nummer not in farb_mapping:
-                    farb_mapping[dmc_nummer] = (zähler, dmc_farbe[2], rgb)
-                    zähler += 1
+                if dmc_color_code not in dmc_color_mapping:
+                    dmc_color_mapping[dmc_color_code] = (pearl_index, mapped_dmc_color[2], rgb)
+                    pearl_index += 1
 
-                farb_nummer: int = farb_mapping[dmc_nummer][0]
+                dmc_color_index: int = dmc_color_mapping[dmc_color_code][0]
 
                 # Draw the pearl (ellipse)
                 draw.ellipse(
-                    (x, y, x + perlengröße_pixel, y + perlengröße_pixel),
+                    (x, y, x + pearl_size_in_pixels, y + pearl_size_in_pixels),
                     fill=rgb,  # Use the RGB tuple directly
                     outline="black",
                 )
 
                 # Determine font size dynamically, with a minimum size of 10px
-                font_size: int = max(10, perlengröße_pixel // 2)
+                font_size: int = max(10, pearl_size_in_pixels // 2)
                 try:
                     font = ImageFont.truetype(
                         "arial.ttf", font_size
@@ -310,15 +310,15 @@ class GenerateDiamondperls:
 
                 # Draw the number on the pearl
                 draw.text(
-                    (x + perlengröße_pixel // 2, y + perlengröße_pixel // 2),
-                    str(farb_nummer),
-                    fill=textfarbe,
+                    (x + pearl_size_in_pixels // 2, y + pearl_size_in_pixels // 2),
+                    str(dmc_color_index),
+                    fill=text_color,
                     font=font,
                     anchor="mm",  # Center the number on the pearl
                 )
 
         # Store the used colors in the class attribute
-        self._verwendete_farben: dict = farb_mapping
+        self._used_colors: dict = dmc_color_mapping
 
     def _save_image(self):
         """
@@ -334,7 +334,7 @@ class GenerateDiamondperls:
         filename = self._input_file_name.replace(
             f".{self._image_file_type}", f"_diamond_perls.{self._image_file_type}"
         )
-        self._bild.save(filename)
+        self._final_image.save(filename)
 
     def _show_image(self):
         """
@@ -344,7 +344,7 @@ class GenerateDiamondperls:
         display the image in the default image viewer of the system.
         """
         """Zeigt das Bild an."""
-        self._bild.show()
+        self._final_image.show()
 
     def _create_colors_textfile(self):
         """
@@ -361,9 +361,9 @@ class GenerateDiamondperls:
             f".{self._image_file_type}", "_verwendete_farben.txt"
         )
         with open(filename, "w", encoding="utf-8") as file:
-            for nummer, (index, name, rgb) in self._verwendete_farben.items():
+            for dmc_color_number, (color_index, color_name, color_rgb_values) in self._used_colors.items():
                 file.write(
-                    f"{index}. {nummer} - {name} (RGB: {rgb[0]}, {rgb[1]}, {rgb[2]})\n"
+                    f"{color_index}. {dmc_color_number} - {color_name} (RGB: {color_rgb_values[0]}, {color_rgb_values[1]}, {color_rgb_values[2]})\n"
                 )
 
     def _create_colors_pdf_file(self):
@@ -378,24 +378,24 @@ class GenerateDiamondperls:
             None
         """
 
-        pdf_datei = self._input_file_name.replace(
+        output_pdf_file = self._input_file_name.replace(
             f".{self._image_file_type}", "_verwendete_farben.pdf"
         )
-        txt_datei = self._input_file_name.replace(
+        color_used_text_file = self._input_file_name.replace(
             f".{self._image_file_type}", "_verwendete_farben.txt"
         )
 
         # Neue PDF-Datei erstellen
-        c = canvas.Canvas(pdf_datei, pagesize=A4)
+        pdf_canvas = canvas.Canvas(output_pdf_file, pagesize=A4)
         (width, height) = A4
 
         # Text aus Datei lesen
-        with open(txt_datei, "r", encoding="utf-8") as file:
+        with open(color_used_text_file, "r", encoding="utf-8") as file:
             lines = file.readlines()
 
         # Startposition für Text
-        y_position = height - 50  # Abstand von oben
-        x_position = 50  # Startposition für die X-Achse
+        text_y_coordinate = height - 50  # Abstand von oben
+        start_x_coordinate = 50  # Startposition für die X-Achse
 
         # Definiere Spaltenbreiten
         column_widths = [100, 100, 300]  # Beispiel: Farbe, Nummer, Beschreibung
@@ -404,19 +404,19 @@ class GenerateDiamondperls:
         rgb_pattern = re.compile(r"RGB: (\d+), (\d+), (\d+)")
 
         for line in lines:
-            if y_position < 50:  # Falls die Seite voll ist, neue Seite
-                c.showPage()
-                y_position = height - 50
+            if text_y_coordinate < 50:  # Falls die Seite voll ist, neue Seite
+                pdf_canvas.showPage()
+                text_y_coordinate = height - 50
 
             # Zerlege die Zeile in die Teile (z.B. Nummer, Name, RGB)
-            parts = line.strip().split(" - ")
+            line_segments = line.strip().split(" - ")
 
-            if len(parts) >= 2:
-                nummer_beschreibung = parts[0].strip()
-                farbe_beschreibung = parts[1].strip()
+            if len(line_segments) >= 2:
+                color_number = line_segments[0].strip()
+                color_description = line_segments[1].strip()
 
                 # Extrahiere die RGB-Werte mit RegEx
-                match = rgb_pattern.search(farbe_beschreibung)
+                match = rgb_pattern.search(color_description)
                 if match:
                     r, g, b = map(int, match.groups())  # Extrahiere RGB-Werte
 
@@ -430,32 +430,32 @@ class GenerateDiamondperls:
                         text_color = (255, 255, 255)  # Weiß
 
                     # Hintergrundfarbe für die Zelle (Farbe)
-                    c.setFillColorRGB(r / 255, g / 255, b / 255)  # Farbe aus RGB setzen
-                    c.rect(
-                        x_position, y_position - 10, column_widths[0], 20, fill=1
+                    pdf_canvas.setFillColorRGB(r / 255, g / 255, b / 255)  # Farbe aus RGB setzen
+                    pdf_canvas.rect(
+                        start_x_coordinate, text_y_coordinate - 10, column_widths[0], 20, fill=1
                     )  # Rechteck als Hintergrund
 
                     # Text mit der passenden Farbe schreiben
-                    c.setFillColorRGB(
+                    pdf_canvas.setFillColorRGB(
                         text_color[0] / 255, text_color[1] / 255, text_color[2] / 255
                     )
-                    c.drawString(
-                        x_position + 5, y_position, nummer_beschreibung
+                    pdf_canvas.drawString(
+                        start_x_coordinate + 5, text_y_coordinate, color_number
                     )  # Nummer
 
                     # Beschreibenden Text (Name der Farbe)
-                    c.setFillColorRGB(0, 0, 0)  # Schwarz für den Farbnamen
-                    c.drawString(
-                        x_position + column_widths[0] + 5,
-                        y_position,
-                        farbe_beschreibung,
+                    pdf_canvas.setFillColorRGB(0, 0, 0)  # Schwarz für den Farbnamen
+                    pdf_canvas.drawString(
+                        start_x_coordinate + column_widths[0] + 5,
+                        text_y_coordinate,
+                        color_description,
                     )  # Farbbeschreibung
 
                     # Position für die nächste Zeile
-                    y_position -= 30  # Zeilenabstand
+                    text_y_coordinate -= 30  # Zeilenabstand
 
         # PDF speichern
-        c.save()
+        pdf_canvas.save()
 
     def generate(self):
         """
@@ -471,9 +471,9 @@ class GenerateDiamondperls:
 
             PIL.Image.Image: The final processed diamond image with pearls.
         """
-        self._zeichne_perlen()
+        self._create_pearl_image()
         self._show_image()
         self._save_image()
         self._create_colors_textfile()
         self._create_colors_pdf_file()
-        return self._bild
+        return self._final_image
