@@ -137,7 +137,7 @@ class GenerateDiamondperls:
         except IOError as e:
             raise IOError (f"Fehler beim Lesen der Datei {DMC_FILE_NAME}: {e}")
 
-    def _finde_nächste_dmc_farbe(self, rgb):
+    def _find_closest_dmc_color(self, rgb):
         """
         Finds the DMC color with the smallest Euclidean distance to the given RGB value.
 
@@ -148,12 +148,20 @@ class GenerateDiamondperls:
             tuple: A tuple with the DMC color number, RGB values, and the color name.
         """
         r, g, b = rgb
-        nächster_dmc = min(
-            self._DMC_farben.items(),
-            key=lambda item: (item[1][0][0] - r) ** 2  # R
-            + (item[1][0][1] - g) ** 2  # G
-            + (item[1][0][2] - b) ** 2,  # B
-        )
+        # Check if the RGB value is already cached
+        if not hasattr(self, '_dmc_cache'):
+            self._dmc_cache = {}
+
+        if rgb in self._dmc_cache:
+            nächster_dmc = self._dmc_cache[rgb]
+        else:
+            nächster_dmc = min(
+                self._DMC_farben.items(),
+                key=lambda item: (item[1][0][0] - r) ** 2  # R
+                + (item[1][0][1] - g) ** 2  # G
+                + (item[1][0][2] - b) ** 2,  # B
+            )
+            self._dmc_cache[rgb] = nächster_dmc  # Cache the result
         dmc_nummer = nächster_dmc[0]
         rgb_farbe = nächster_dmc[1][0]  # RGB values of the closest DMC color
         farb_name = nächster_dmc[1][1]  # Color name
@@ -178,9 +186,12 @@ class GenerateDiamondperls:
             _breite (int): Die Breite des verarbeiteten Bildes in Pixeln.
             _länge (int): Die Höhe des verarbeiteten Bildes in Pixeln.
         """
-
-        self._bild = Image.open(self._input_file_name).convert("RGB")
-
+        try:
+            self._bild = Image.open(self._input_file_name).convert("RGB")
+        except FileNotFoundError as e:
+            raise FileNotFoundError(f'Datei nicht gefunden: {e}')
+        except Exception as e:
+            raise Exception(f'Ein Problem ist aufgetreten: {e}')
         # Originalgröße des Bildes
         orig_breite, orig_höhe = self._bild.size
         ziel_breite, ziel_höhe = self._breite_px, self._höhe_px
@@ -262,7 +273,7 @@ class GenerateDiamondperls:
                     )
 
                 # Find the closest DMC color
-                dmc_farbe: tuple = self._finde_nächste_dmc_farbe(rgb_farbe)
+                dmc_farbe: tuple = self._find_closest_dmc_color(rgb_farbe)
                 dmc_nummer: str = dmc_farbe[0]
                 rgb: tuple = dmc_farbe[1]
                 r, g, b = rgb
