@@ -162,6 +162,7 @@ class DiamondPerlsApp(tk.Tk):
             perlen_groesse=perlen_groesse,
             durchschnitt_farbe_berechnen=durchschnitt_farbe_berechnen,
         )
+        
         try:
             generator.generate()
             messagebox.showinfo("Success", "Diamond Perls generated successfully!")
@@ -174,3 +175,5 @@ class DiamondPerlsApp(tk.Tk):
             )
         except Exception as e:
             messagebox.showerror("Error", f"An unexpected error occurred: {e}")
+        
+       

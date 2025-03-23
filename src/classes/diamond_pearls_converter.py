@@ -1,10 +1,10 @@
 import csv
 import sys
 import os
+import re
 
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
-
 from PIL import Image, ImageDraw, ImageStat, ImageFont
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -12,12 +12,6 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from config.paper_size import FORMATE_MM
 from config.pathnames import DMC_FILE_NAME  # DATA_PATH
 from config.const import DPI, PERLEN_GROESSE, FARBBEREICH, FORMAT, MM_PRO_INCH
-
-# FIXME: !!!! Wenn eine Datei, die KEIN .jpg ist verwendet wird muss die entsprechende Erweiterung KORREKT verwendet werden !!!!
-# FIXME: datei erweiterung extrahieren, unabhängig machen von gross und klein schreibung
-# FIXME: datei erweiterung an alle beteiligten Methoden übergeben
-# FIXME: ODER als Instanz Variable speichern und in den Methoden berücksichtigen.
-
 
 class GenerateDiamondperls:
     """
@@ -253,12 +247,19 @@ class GenerateDiamondperls:
                 dmc_nummer = dmc_farbe[0]
                 rgb = dmc_farbe[1]
                 r, g, b = rgb
-                textfarbe: tuple[int, int, int] = (255 - r, 255 - g, 255 - b)
-                farb_name = dmc_farbe[2]
+
+                # Berechnung der Helligkeit der Perlenfarbe
+                luminance = 0.299 * r + 0.587 * g + 0.114 * b
+
+                # Wähle die Textfarbe basierend auf der Helligkeit der Perlenfarbe
+                if luminance > 128:  # Helle Farbe, also dunkler Text
+                    textfarbe = (0, 0, 0)  # Schwarzer Text
+                else:  # Dunkle Farbe, also heller Text
+                    textfarbe = (255, 255, 255)  # Weißer Text
 
                 # Falls die Farbe noch nicht existiert, eine neue Nummer vergeben
                 if dmc_nummer not in farb_mapping:
-                    farb_mapping[dmc_nummer] = (zähler, farb_name, rgb)
+                    farb_mapping[dmc_nummer] = (zähler, dmc_farbe[2], rgb)
                     zähler += 1  # Nur erhöhen, wenn eine neue Farbe gefunden wird
 
                 farb_nummer = farb_mapping[dmc_nummer][0]
@@ -283,6 +284,7 @@ class GenerateDiamondperls:
                     font=font,
                     anchor="mm",  # Zentriert die Zahl auf der Perle
                 )
+
         self._verwendete_farben = farb_mapping
 
     def _save_image(self):
@@ -335,13 +337,15 @@ class GenerateDiamondperls:
                     f"{index}. {nummer} - {name} (RGB: {rgb[0]}, {rgb[1]}, {rgb[2]})\n"
                 )
 
+
+
     def _create_colors_pdf_file(self):
         """
-        Erstellt eine PDF-Datei aus einer Textdatei.
+        Erstellt eine PDF-Datei aus einer Textdatei und zeigt Farben als Hintergrund
+        für die Textzeilen an.
 
         Args:
-            txt_datei (str): Name der Textdatei.
-            pdf_datei (str): Name der PDF-Datei.
+            None
 
         Returns:
             None
@@ -353,6 +357,7 @@ class GenerateDiamondperls:
         txt_datei = self._input_file_name.replace(
             f".{self._image_file_type}", "_verwendete_farben.txt"
         )
+
         # Neue PDF-Datei erstellen
         c = canvas.Canvas(pdf_datei, pagesize=A4)
         (width, height) = A4
@@ -363,17 +368,58 @@ class GenerateDiamondperls:
 
         # Startposition für Text
         y_position = height - 50  # Abstand von oben
+        x_position = 50  # Startposition für die X-Achse
+
+        # Definiere Spaltenbreiten
+        column_widths = [100, 100, 300]  # Beispiel: Farbe, Nummer, Beschreibung
+
+        # RegEx für RGB-Werte in der Form "RGB: 255, 251, 239"
+        rgb_pattern = re.compile(r"RGB: (\d+), (\d+), (\d+)")
 
         for line in lines:
             if y_position < 50:  # Falls die Seite voll ist, neue Seite
                 c.showPage()
                 y_position = height - 50
 
-            c.drawString(50, y_position, line.strip())  # Text zeichnen
-            y_position -= 20  # Zeilenabstand
+            # Zerlege die Zeile in die Teile (z.B. Nummer, Name, RGB)
+            parts = line.strip().split(' - ')
+
+            if len(parts) >= 2:
+                nummer_beschreibung = parts[0].strip()
+                farbe_beschreibung = parts[1].strip()
+
+                # Extrahiere die RGB-Werte mit RegEx
+                match = rgb_pattern.search(farbe_beschreibung)
+                if match:
+                    r, g, b = map(int, match.groups())  # Extrahiere RGB-Werte
+
+                    # Berechne die Helligkeit der Farbe
+                    luminance = 0.299 * r + 0.587 * g + 0.114 * b
+
+                    # Wähle Textfarbe basierend auf der Helligkeit der Hintergrundfarbe
+                    if luminance > 128:  # Helle Farbe, dunkler Text
+                        text_color = (0, 0, 0)  # Schwarz
+                    else:  # Dunkle Farbe, heller Text
+                        text_color = (255, 255, 255)  # Weiß
+
+                    # Hintergrundfarbe für die Zelle (Farbe)
+                    c.setFillColorRGB(r / 255, g / 255, b / 255)  # Farbe aus RGB setzen
+                    c.rect(x_position, y_position - 10, column_widths[0], 20, fill=1)  # Rechteck als Hintergrund
+
+                    # Text mit der passenden Farbe schreiben
+                    c.setFillColorRGB(text_color[0] / 255, text_color[1] / 255, text_color[2] / 255)
+                    c.drawString(x_position + 5, y_position, nummer_beschreibung)  # Nummer
+
+                    # Beschreibenden Text (Name der Farbe)
+                    c.setFillColorRGB(0, 0, 0)  # Schwarz für den Farbnamen
+                    c.drawString(x_position + column_widths[0] + 5, y_position, farbe_beschreibung)  # Farbbeschreibung
+
+                    # Position für die nächste Zeile
+                    y_position -= 30  # Zeilenabstand
 
         # PDF speichern
         c.save()
+
 
     def generate(self):
         """
