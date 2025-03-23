@@ -79,8 +79,11 @@ class GenerateDiamondperls:
             self._formate_mm[self._format][1] * self._dpi / MM_PRO_INCH
         )
         self._verwendete_farben: dict = {}
-        self._lade_DMC_farben()
-        self._lade_bild()
+        try:
+            self._lade_DMC_farben()
+            self._lade_bild()
+        except Exception as e:
+            raise RuntimeError(f"Fehler beim Laden der DMC-Farben oder des Bildes: {e}")
 
     def _berechne_durchschnittsfarbe(self, teilbild):
         """
