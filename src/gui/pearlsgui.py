@@ -11,8 +11,7 @@ try:
     from config.paper_size import FORMATE_MM
     from config.const import GUI, DPI, PERLEN_GROESSE, FORMAT, FARBBEREICH
 except ModuleNotFoundError as e:
-    print(f"Module Import Error: {e}")
-    messagebox.showerror("Error", "Required modules could not be found.")
+    messagebox.showerror(f"Module Import Error: {e}", "Required modules could not be found.")
     sys.exit(1)
 
 

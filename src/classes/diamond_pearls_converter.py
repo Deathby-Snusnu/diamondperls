@@ -62,7 +62,7 @@ class GenerateDiamondperls:
         farben_anzahl=FARBBEREICH,
         format=FORMAT,
         dpi=DPI,
-        durchschnitt_farbe_berechnen=True,
+        durchschnitt_farbe_berechnen=False,
     ):
         self._durchschnitt_farbe_berechnen: bool = durchschnitt_farbe_berechnen
         self._input_file_name: str = f"{input_file_name}"
@@ -74,11 +74,11 @@ class GenerateDiamondperls:
         self._formate_mm: dict = FORMATE_MM
         self._breite_px: int = round(
             self._formate_mm[self._format][0] * self._dpi / MM_PRO_INCH
-        )
-        self._verwendete_farben: dict = {}
+        )    
         self._höhe_px: int = round(
             self._formate_mm[self._format][1] * self._dpi / MM_PRO_INCH
         )
+        self._verwendete_farben: dict = {}
         self._lade_DMC_farben()
         self._lade_bild()
 
@@ -124,15 +124,15 @@ class GenerateDiamondperls:
                         r, g, b = map(
                             int, row[2:5]
                         )  # Convert RGB values from string to integers
-                    except ValueError:
-                        print(f"Fehlerhafte RGB-Werte in Zeile: {row}")
-                        continue
+                    except ValueError as e:
+                        raise ValueError(f"Fehlerhafte RGB-Werte in Zeile: {row} {e}")
+                        
 
                     self._DMC_farben[dmc_nummer] = ((r, g, b), farb_name)
-        except FileNotFoundError:
-            print(f"Die Datei {DMC_FILE_NAME} wurde nicht gefunden.")
+        except FileNotFoundError as e:
+            raise FileNotFoundError(f"Die Datei {DMC_FILE_NAME} wurde nicht gefunden. {e}")
         except IOError as e:
-            print(f"Fehler beim Lesen der Datei {DMC_FILE_NAME}: {e}")
+            raise IOError (f"Fehler beim Lesen der Datei {DMC_FILE_NAME}: {e}")
 
     def _finde_nächste_dmc_farbe(self, rgb):
         """
