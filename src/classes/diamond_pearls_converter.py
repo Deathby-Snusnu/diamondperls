@@ -16,7 +16,7 @@ from config.const import DPI, PERLEN_GROESSE, FARBBEREICH, FORMAT, MM_PRO_INCH
 class GenerateDiamondperls:
     """
     GenerateDiamondperls is a class designed to create a diamond pearl pattern from an input image.
-    It processes the image, reduces its color palette, and maps the colors to the closest RAL colors.
+    It processes the image, reduces its color palette, and maps the colors to the closest DMC colors.
     The result is a stylized image with a pearl-like appearance.
     Attributes:
         _durchschnitt_farbe_berechnen (bool): Determines whether to calculate the average color for each block.
@@ -28,20 +28,20 @@ class GenerateDiamondperls:
         _formate_mm (dict): Dictionary containing dimensions of formats in millimeters.
         _breite_px (int): Width of the image in pixels after scaling.
         _höhe_px (int): Height of the image in pixels after scaling.
-        _RAL_farben (dict): Dictionary of RAL colors loaded from a CSV file.
+        _DMC_farben (dict): Dictionary of DMC colors loaded from a CSV file.
         _bild (PIL.Image.Image): The processed image.
         _breite (int): Width of the processed image.
         _länge (int): Height of the processed image.
-        _verwendete_farben (set): Set of RAL colors used in the final image.
+        _verwendete_farben (set): Set of DMC colors used in the final image.
     Methods:
         __init__(input_file_name, perlen_groesse, farben_anzahl, format, dpi, durchschnitt_farbe_berechnen):
             Initializes the class with the given parameters and loads necessary resources.
         _berechne_durchschnittsfarbe(teilbild):
             Calculates the average color of a given image block.
-        _lade_RAL_farben():
-            Loads RAL colors from a CSV file.
-        _finde_nächste_ral_farbe(rgb):
-            Finds the closest RAL color to a given RGB value using Euclidean distance.
+        _lade_DMC_farben():
+            Loads DMC colors from a CSV file.
+        _finde_nächste_DMC_farbe(rgb):
+            Finds the closest DMC color to a given RGB value using Euclidean distance.
         _lade_bild():
             Loads the input image, scales it proportionally, and reduces its color palette.
         _zeichne_perlen():
@@ -316,15 +316,15 @@ class GenerateDiamondperls:
 
     def _create_colors_textfile(self):
         """
-        Writes the list of used RAL colors to a text file.
+        Writes the list of used DMC colors to a text file.
 
-        This method writes the RAL color codes and names to a text file named
+        This method writes the DMC color codes and names to a text file named
         "verwendete_farben.txt" in the same directory as the input image.
 
         Returns:
             None
         """
-        """Schreibt die Liste der verwendeten RAL-Farben in eine Textdatei."""
+        """Schreibt die Liste der verwendeten DMC-Farben in eine Textdatei."""
         with open(
             self._input_file_name.replace(
                 f".{self._image_file_type}", "_verwendete_farben.txt"

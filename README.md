@@ -9,7 +9,7 @@ Diamond Perls Generator ist ein Python-Programm, das einzigartige Diamantmuster 
 1. Klone das Repository:
 
     ```bash
-    git clone [https://github.com/username/DiamondPerlsGenerator.git](https://github.com/Deathby-Snusnu/diamondperls.git)
+    git clone [https://github.com/Detahby_Snusnu/DiamondPerls.git](https://github.com/Deathby-Snusnu/diamondperls.git)
     ```
 
 2. Wechsle in das Projektverzeichnis:
@@ -37,9 +37,7 @@ Diamond Perls Generator ist ein Python-Programm, das einzigartige Diamantmuster 
 1. Starte das Programm:
 
     ```bash
-    python  .\src\main.py oder
-            .\src\pearlsapp.py oder
-            .\start.ps1
+    .\run.ps1
     ```
 
 2. Folge den Anweisungen auf dem Bildschirm, um dein Diamantmuster zu generieren.
