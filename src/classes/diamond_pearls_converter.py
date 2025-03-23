@@ -187,7 +187,10 @@ class GenerateDiamondperls:
             _länge (int): Die Höhe des verarbeiteten Bildes in Pixeln.
         """
         try:
-            self._bild = Image.open(self._input_file_name).convert("RGB")
+            try:
+                self._bild = Image.open(self._input_file_name).convert("RGB")
+            except Image.UnidentifiedImageError as e:
+                raise RuntimeError(f"Das Bild konnte nicht identifiziert werden: {e}")
         except FileNotFoundError as e:
             raise FileNotFoundError(f'Datei nicht gefunden: {e}')
         except Exception as e:
