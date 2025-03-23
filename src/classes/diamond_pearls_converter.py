@@ -9,9 +9,9 @@ from PIL import Image, ImageDraw, ImageStat, ImageFont
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from config.paper_size import FORMATE_MM
+from config.paper_size import PAPER_DIMENSIONS_MM
 from config.pathnames import DMC_FILE_NAME  # DATA_PATH
-from config.const import DPI, PERLEN_GROESSE, FARBBEREICH, FORMAT, MM_PRO_INCH
+from config.const import PRINTRESOLUTIONDPI, PEARL_SIZE, COLOR_DEPTH, PAGE_FORMAT, MILLIMETERS_PER_INCH
 
 
 class GenerateDiamondperls:
@@ -65,10 +65,10 @@ class GenerateDiamondperls:
     def __init__(
         self,
         input_file_name,
-        pearl_dimension=PERLEN_GROESSE,
-        color_variation_count=FARBBEREICH,
-        output_format=FORMAT,
-        output_dpi=DPI,
+        pearl_dimension=PEARL_SIZE,
+        color_variation_count=COLOR_DEPTH,
+        output_format=PAGE_FORMAT,
+        output_dpi=PRINTRESOLUTIONDPI,
         is_average_color_enabled=False,
     ):
         self._is_average_color_calculation_enabled: bool = is_average_color_enabled
@@ -78,12 +78,12 @@ class GenerateDiamondperls:
         self._color_variation_count: int = color_variation_count
         self._output_file_format: str = output_format
         self._print_dpi: int = output_dpi
-        self._format_sizes_mm: dict = FORMATE_MM
+        self._format_sizes_mm: dict = PAPER_DIMENSIONS_MM
         self._width_in_pixels: int = round(
-            self._format_sizes_mm[self._output_file_format][0] * self._print_dpi / MM_PRO_INCH
+            self._format_sizes_mm[self._output_file_format][0] * self._print_dpi / MILLIMETERS_PER_INCH
         )    
         self._height_in_pixels: int = round(
-            self._format_sizes_mm[self._output_file_format][1] * self._print_dpi / MM_PRO_INCH
+            self._format_sizes_mm[self._output_file_format][1] * self._print_dpi / MILLIMETERS_PER_INCH
         )
         self._used_colors: dict = {}
         try:
@@ -270,7 +270,7 @@ class GenerateDiamondperls:
         draw = ImageDraw.Draw(self._final_image)
 
         # Calculate pearl size in pixels
-        pearl_size_in_pixels: int = round(self._print_dpi * (self._pearl_dimension / MM_PRO_INCH))
+        pearl_size_in_pixels: int = round(self._print_dpi * (self._pearl_dimension / MILLIMETERS_PER_INCH))
         pearl_index: int = 1  # Start value for numbering
         dmc_color_mapping: dict = {}  # Stores the color and its corresponding number
 

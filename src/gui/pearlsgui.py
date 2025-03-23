@@ -8,8 +8,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".
 
 try:
     from src.classes.diamond_pearls_converter import GenerateDiamondperls
-    from config.paper_size import FORMATE_MM
-    from config.const import GUI, DPI, PERLEN_GROESSE, FORMAT, FARBBEREICH
+    from config.paper_size import PAPER_DIMENSIONS_MM
+    from config.const import GUI, PRINTRESOLUTIONDPI, PEARL_SIZE, PAGE_FORMAT, COLOR_DEPTH
 except ModuleNotFoundError as e:
     messagebox.showerror("Module Import Error", f"Required modules could not be found: {e}")
     sys.exit(1)
@@ -26,8 +26,8 @@ class DiamondPerlsApp(tk.Tk):
 
     def setup_gui(self) -> None:
         """Setup the main GUI layout and widgets."""
-        self.title(GUI.TITLE)
-        self.geometry(GUI.GEOMETRY)
+        self.title(GUI.WINDOW_TITLE)
+        self.geometry(GUI.WINDOW_DIMENSIONS)
         self.columnconfigure(0, weight=1)
 
         self.create_file_selection()
@@ -49,8 +49,8 @@ class DiamondPerlsApp(tk.Tk):
 
     def create_sliders(self) -> None:
         """Create sliders for adjustable settings."""
-        self.color_depth_var: tk.IntVar = tk.IntVar(value=FARBBEREICH)
-        self.dpi_var: tk.IntVar = tk.IntVar(value=DPI)
+        self.color_depth_var: tk.IntVar = tk.IntVar(value=COLOR_DEPTH)
+        self.dpi_var: tk.IntVar = tk.IntVar(value=PRINTRESOLUTIONDPI)
         
         self.create_slider("Color Depth:", 1, 200, self.color_depth_var, 1)
         self.create_slider("DPI:", 72, 600, self.dpi_var, 2)
@@ -58,12 +58,12 @@ class DiamondPerlsApp(tk.Tk):
     def create_dropdowns(self) -> None:
         """Create dropdowns for selecting options."""
         ttk.Label(self, text="Paper Size:").grid(row=3, column=0, pady=5)
-        self.paper_size_var: tk.StringVar = tk.StringVar(value=list(FORMATE_MM.keys())[0])
-        self.paper_size_dropdown = ttk.Combobox(self, textvariable=self.paper_size_var, values=list(FORMATE_MM.keys()), state="readonly")
+        self.paper_size_var: tk.StringVar = tk.StringVar(value=list(PAPER_DIMENSIONS_MM.keys())[0])
+        self.paper_size_dropdown = ttk.Combobox(self, textvariable=self.paper_size_var, values=list(PAPER_DIMENSIONS_MM.keys()), state="readonly")
         self.paper_size_dropdown.grid(row=4, column=0, pady=5)
 
         ttk.Label(self, text="Pearl Size (mm):").grid(row=5, column=0, pady=5)
-        self.pearl_size_var: tk.DoubleVar = tk.DoubleVar(value=PERLEN_GROESSE)
+        self.pearl_size_var: tk.DoubleVar = tk.DoubleVar(value=PEARL_SIZE)
         self.pearl_size_entry = ttk.Entry(self, textvariable=self.pearl_size_var, width=10)
         self.pearl_size_entry.grid(row=6, column=0, pady=5)
 

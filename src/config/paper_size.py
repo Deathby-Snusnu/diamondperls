@@ -1,4 +1,4 @@
-FORMATE_MM = {
+PAPER_DIMENSIONS_MM = {
 "A0"	: (841,1189),
 "A1"	: (594,841),
 "A2"	: (420,594),
