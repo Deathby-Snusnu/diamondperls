@@ -92,6 +92,28 @@ class GenerateDiamondperls:
         except Exception as e:
             raise RuntimeError(f"Fehler beim Laden der DMC-Farben oder des Bildes: {e}")
 
+    def _rotate_image_for_max_coverage(self, original_width, original_height, target_width, target_height):
+            """
+            Rotates the image by 90 degrees if the original dimensions do not match the target dimensions
+            for maximum coverage.
+
+            Args:
+                original_width (int): The original width of the image.
+                original_height (int): The original height of the image.
+                target_width (int): The target width of the image.
+                target_height (int): The target height of the image.
+
+            Returns:
+                None
+            """
+            if (original_width < original_height and target_width > target_height) or (
+                original_width > original_height and target_width < target_height
+            ):
+                self._final_image = self._final_image.rotate(90, expand=True)
+                original_width, original_height = self._final_image.size  # Update size after rotation
+
+    
+    
     def _get_average_color_value(self, teilbild):
         """
         Calculates the average color of a given image section (block).
@@ -209,15 +231,9 @@ class GenerateDiamondperls:
         original_width, original_height = self._final_image.size
         target_width, target_height = self._width_in_pixels, self._height_in_pixels
 
-        # **Automatische Drehung für maximale Abdeckung**
-        if (original_width < original_height and target_width > target_height) or (
-            original_width > original_height and target_width < target_height
-        ):
-            self._final_image = self._final_image.rotate(90, expand=True)
-            original_width, original_height = (
-                self._final_image.size
-            )  # Neue Größe nach Rotation aktualisieren
+        self._rotate_image_for_max_coverage(original_width, original_height, target_width, target_height)
 
+        
         # **Skalierung mit Erhaltung des Seitenverhältnisses**
         scaling_factor = min(target_width / original_width, target_height / original_height)
         scaled_width = int(original_width * scaling_factor)
