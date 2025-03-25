@@ -126,7 +126,8 @@ class GenerateDiamondperls:
                 self._final_image.size
             )  # Update size after rotation
 
-    def _get_average_color_value(self, teilbild):
+    @staticmethod
+    def _get_average_color_value(teilbild):
         """
         Calculates the average color of a given image section (block).
 
