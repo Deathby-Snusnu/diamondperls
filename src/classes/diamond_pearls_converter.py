@@ -148,24 +148,23 @@ class GenerateDiamondperls:
         self._dmc_color_palette = {}
         try:
             with open(DMC_FILE_NAME, "r", encoding="utf-8") as file:
-                reader = csv.reader(file)
-                next(reader)  # Skip header
-                for row in reader:
-                    dmc_number = row[0]
-                    color_name = row[1]
-                    try:
-                        r, g, b = map(
-                            int, row[2:5]
-                        )  # Convert RGB values from string to integers
-                    except ValueError as e:
-                        raise ValueError(f"Fehlerhafte RGB-Werte in Zeile: {row} {e}")
-                        
-
-                    self._dmc_color_palette[dmc_number] = ((r, g, b), color_name)
+                try:
+                    self._iterate_over_csv_file(file)
+                except ValueError as e:
+                    raise ValueError(f"Fehlerhafte RGB-Werte in Zeile: {row} {e}")
         except FileNotFoundError as e:
             raise FileNotFoundError(f"Die Datei {DMC_FILE_NAME} wurde nicht gefunden. {e}")
         except IOError as e:
             raise IOError (f"Fehler beim Lesen der Datei {DMC_FILE_NAME}: {e}")
+
+    def _iterate_over_csv_file(self, file):
+        reader = csv.reader(file)
+        next(reader)  # Skip header
+        for row in reader:
+            dmc_number = row[0]
+            color_name = row[1]
+            r, g, b = map(int, row[2:5])  # Convert RGB values from string to integers
+            self._dmc_color_palette[dmc_number] = ((r, g, b), color_name)
 
     def _find_closest_dmc_color(self, rgb):
         """
@@ -235,9 +234,7 @@ class GenerateDiamondperls:
 
         
         # **Skalierung mit Erhaltung des Seitenverhältnisses**
-        scaling_factor = min(target_width / original_width, target_height / original_height)
-        scaled_width = int(original_width * scaling_factor)
-        scaled_height = int(original_height * scaling_factor)
+        scaled_height, scaled_width = self._scale_image(original_height, original_width, target_height, target_width)
 
         # Bild proportional skalieren
         self._final_image = self._final_image.resize(
@@ -257,6 +254,13 @@ class GenerateDiamondperls:
         ).convert("RGB")
 
         self._image_width, self._image_height = self._final_image.size
+
+    @staticmethod
+    def _scale_image(original_height, original_width, target_height, target_width):
+        scaling_factor = min(target_width / original_width, target_height / original_height)
+        scaled_width = int(original_width * scaling_factor)
+        scaled_height = int(original_height * scaling_factor)
+        return scaled_height, scaled_width
 
     def _create_pearl_image(self) -> None:
         """Generates an image with pearls drawn based on processed color data.
@@ -286,9 +290,7 @@ class GenerateDiamondperls:
         draw = ImageDraw.Draw(self._final_image)
 
         # Calculate pearl size in pixels
-        pearl_size_in_pixels: int = round(self._print_dpi * (self._pearl_dimension / MILLIMETERS_PER_INCH))
-        pearl_index: int = 1  # Start value for numbering
-        dmc_color_mapping: dict = {}  # Stores the color and its corresponding number
+        dmc_color_mapping, pearl_index, pearl_size_in_pixels = self._calculate_pearlsize()
 
         for x in range(0, self._image_width, pearl_size_in_pixels):
             for y in range(0, self._image_height, pearl_size_in_pixels):
@@ -347,6 +349,12 @@ class GenerateDiamondperls:
 
         # Store the used colors in the class attribute
         self._used_colors: dict = dmc_color_mapping
+
+    def _calculate_pearlsize(self):
+        pearl_size_in_pixels: int = round(self._print_dpi * (self._pearl_dimension / MILLIMETERS_PER_INCH))
+        pearl_index: int = 1  # Start value for numbering
+        dmc_color_mapping: dict = {}  # Stores the color and its corresponding number
+        return dmc_color_mapping, pearl_index, pearl_size_in_pixels
 
     def _find_color(self, cropped_image, pearl_size_in_pixels):
         # Calculate the average color or use the center pixel color
