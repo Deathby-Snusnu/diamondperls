@@ -11,7 +11,13 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from config.paper_size import PAPER_DIMENSIONS_MM
 from config.pathnames import DMC_FILE_NAME  # DATA_PATH
-from config.const import PRINTRESOLUTIONDPI, PEARL_SIZE, COLOR_DEPTH, PAGE_FORMAT, MILLIMETERS_PER_INCH
+from config.const import (
+    PRINTRESOLUTIONDPI,
+    PEARL_SIZE,
+    COLOR_DEPTH,
+    PAGE_FORMAT,
+    MILLIMETERS_PER_INCH,
+)
 
 
 class GenerateDiamondperls:
@@ -80,10 +86,14 @@ class GenerateDiamondperls:
         self._print_dpi: int = output_dpi
         self._format_sizes_mm: dict = PAPER_DIMENSIONS_MM
         self._width_in_pixels: int = round(
-            self._format_sizes_mm[self._output_file_format][0] * self._print_dpi / MILLIMETERS_PER_INCH
-        )    
+            self._format_sizes_mm[self._output_file_format][0]
+            * self._print_dpi
+            / MILLIMETERS_PER_INCH
+        )
         self._height_in_pixels: int = round(
-            self._format_sizes_mm[self._output_file_format][1] * self._print_dpi / MILLIMETERS_PER_INCH
+            self._format_sizes_mm[self._output_file_format][1]
+            * self._print_dpi
+            / MILLIMETERS_PER_INCH
         )
         self._used_colors: dict = {}
         try:
@@ -92,28 +102,30 @@ class GenerateDiamondperls:
         except Exception as e:
             raise RuntimeError(f"Fehler beim Laden der DMC-Farben oder des Bildes: {e}")
 
-    def _rotate_image_for_max_coverage(self, original_width, original_height, target_width, target_height):
-            """
-            Rotates the image by 90 degrees if the original dimensions do not match the target dimensions
-            for maximum coverage.
+    def _rotate_image_for_max_coverage(
+        self, original_width, original_height, target_width, target_height
+    ):
+        """
+        Rotates the image by 90 degrees if the original dimensions do not match the target dimensions
+        for maximum coverage.
 
-            Args:
-                original_width (int): The original width of the image.
-                original_height (int): The original height of the image.
-                target_width (int): The target width of the image.
-                target_height (int): The target height of the image.
+        Args:
+            original_width (int): The original width of the image.
+            original_height (int): The original height of the image.
+            target_width (int): The target width of the image.
+            target_height (int): The target height of the image.
 
-            Returns:
-                None
-            """
-            if (original_width < original_height and target_width > target_height) or (
-                original_width > original_height and target_width < target_height
-            ):
-                self._final_image = self._final_image.rotate(90, expand=True)
-                original_width, original_height = self._final_image.size  # Update size after rotation
+        Returns:
+            None
+        """
+        if (original_width < original_height and target_width > target_height) or (
+            original_width > original_height and target_width < target_height
+        ):
+            self._final_image = self._final_image.rotate(90, expand=True)
+            original_width, original_height = (
+                self._final_image.size
+            )  # Update size after rotation
 
-    
-    
     def _get_average_color_value(self, teilbild):
         """
         Calculates the average color of a given image section (block).
@@ -148,23 +160,27 @@ class GenerateDiamondperls:
         self._dmc_color_palette = {}
         try:
             with open(DMC_FILE_NAME, "r", encoding="utf-8") as file:
-                try:
-                    self._iterate_over_csv_file(file)
-                except ValueError as e:
-                    raise ValueError(f"Fehlerhafte RGB-Werte in Zeile: {row} {e}")
+                self._iterate_over_csv_file(file)
         except FileNotFoundError as e:
-            raise FileNotFoundError(f"Die Datei {DMC_FILE_NAME} wurde nicht gefunden. {e}")
+            raise FileNotFoundError(
+                f"Die Datei {DMC_FILE_NAME} wurde nicht gefunden. {e}"
+            )
         except IOError as e:
-            raise IOError (f"Fehler beim Lesen der Datei {DMC_FILE_NAME}: {e}")
+            raise IOError(f"Fehler beim Lesen der Datei {DMC_FILE_NAME}: {e}")
 
     def _iterate_over_csv_file(self, file):
         reader = csv.reader(file)
         next(reader)  # Skip header
         for row in reader:
-            dmc_number = row[0]
-            color_name = row[1]
-            r, g, b = map(int, row[2:5])  # Convert RGB values from string to integers
-            self._dmc_color_palette[dmc_number] = ((r, g, b), color_name)
+            try:
+                dmc_number = row[0]
+                color_name = row[1]
+                r, g, b = map(
+                    int, row[2:5]
+                )  # Convert RGB values from string to integers
+                self._dmc_color_palette[dmc_number] = ((r, g, b), color_name)
+            except ValueError as e:
+                raise ValueError(f"Fehlerhafte RGB-Werte in Zeile: {row} {e}")
 
     def _find_closest_dmc_color(self, rgb):
         """
@@ -178,7 +194,7 @@ class GenerateDiamondperls:
         """
         r, g, b = rgb
         # Check if the RGB value is already cached
-        if not hasattr(self, '_dmc_cache'):
+        if not hasattr(self, "_dmc_cache"):
             self._dmc_cache = {}
 
         if rgb in self._dmc_cache:
@@ -198,77 +214,85 @@ class GenerateDiamondperls:
 
     def _load_and_process_image(self):
         """
-        Loads an image, scales it proportionally, rotates it if necessary, and reduces its color palette.
+        Loads, processes, and prepares the input image for pearl generation.
 
-        This method performs the following steps:
-        1. Opens the image file specified by `_input_file_name` and converts it to RGB mode.
-        2. Automatically rotates the image by 90 degrees if its dimensions do not match the target dimensions.
-        3. Scales the image proportionally to fit within the target dimensions specified by `_width_in_pixels` and `_height_in_pixels`.
-        4. Fills the image with a white background if it is smaller than the target dimensions.
-        5. Reduces the image's color palette to `_color_variation_count` colors using an adaptive palette.
-        6. Updates the image dimensions (`_image_width` and `_image_height`) based on the processed image.
+        Steps:
+        1. Opens the image and converts it to RGB mode.
+        2. Rotates the image for optimal coverage if dimensions mismatch.
+        3. Scales the image proportionally to fit within target dimensions.
+        4. Fills smaller images with a white background to match target dimensions.
+        5. Reduces the color palette to the specified number of variations.
+        6. Updates the processed image dimensions.
 
-        Attributes:
-            _input_file_name (str): The file path of the input image.
-            _width_in_pixels (int): The maximum width of the scaled image in pixels.
-            _height_in_pixels (int): The maximum height of the scaled image in pixels.
-            _color_variation_count (int): The number of colors to use in the adaptive palette.
-            _final_image (Image): The processed image object.
-            _image_width (int): The width of the processed image in pixels.
-            _image_height (int): The height of the processed image in pixels.
+        Raises:
+            FileNotFoundError: If the input file is not found.
+            RuntimeError: If the image cannot be identified.
+            Exception: For any other issues during processing.
         """
         try:
-            try:
-                self._final_image = Image.open(self._input_file_name).convert("RGB")
-            except Image.UnidentifiedImageError as e:
-                raise RuntimeError(f"Das Bild konnte nicht identifiziert werden: {e}")
+            self._final_image = Image.open(self._input_file_name).convert("RGB")
         except FileNotFoundError as e:
-            raise FileNotFoundError(f'Datei nicht gefunden: {e}')
+            raise FileNotFoundError(f"File not found: {e}")
+        except Image.UnidentifiedImageError as e:
+            raise RuntimeError(f"Image could not be identified: {e}")
         except Exception as e:
-            raise Exception(f'Ein Problem ist aufgetreten: {e}')
-        # Originalgröße des Bildes
+            raise Exception(f"An error occurred: {e}")
+
+        # Rotate image for maximum coverage
         original_width, original_height = self._final_image.size
-        target_width, target_height = self._width_in_pixels, self._height_in_pixels
+        self._rotate_image_for_max_coverage(
+            original_width,
+            original_height,
+            self._width_in_pixels,
+            self._height_in_pixels,
+        )
 
-        self._rotate_image_for_max_coverage(original_width, original_height, target_width, target_height)
-
-        
-        # **Skalierung mit Erhaltung des Seitenverhältnisses**
-        scaled_height, scaled_width = self._scale_image(original_height, original_width, target_height, target_width)
-
-        # Bild proportional skalieren
+        # Scale image proportionally
+        scaled_height, scaled_width = self._scale_image(
+            original_height,
+            original_width,
+            self._height_in_pixels,
+            self._width_in_pixels,
+        )
         self._final_image = self._final_image.resize(
             (scaled_width, scaled_height), Image.Resampling.LANCZOS
         )
 
-        # **Falls das Bild kleiner ist, weiß auffüllen**
-        filled_background_image = Image.new("RGB", (target_width, target_height), (255, 255, 255))
-        image_position = ((target_width - scaled_width) // 2, (target_height - scaled_height) // 2)
+        # Fill smaller images with a white background
+        filled_background_image = Image.new(
+            "RGB", (self._width_in_pixels, self._height_in_pixels), (255, 255, 255)
+        )
+        image_position = (
+            (self._width_in_pixels - scaled_width) // 2,
+            (self._height_in_pixels - scaled_height) // 2,
+        )
         filled_background_image.paste(self._final_image, image_position)
-
         self._final_image = filled_background_image
 
-        # **Farben reduzieren**
+        # Reduce color palette
         self._final_image = self._final_image.convert(
             "P", palette=Image.Palette.ADAPTIVE, colors=self._color_variation_count
         ).convert("RGB")
 
+        # Update image dimensions
         self._image_width, self._image_height = self._final_image.size
 
     @staticmethod
     def _scale_image(original_height, original_width, target_height, target_width):
-        scaling_factor = min(target_width / original_width, target_height / original_height)
+        scaling_factor = min(
+            target_width / original_width, target_height / original_height
+        )
         scaled_width = int(original_width * scaling_factor)
         scaled_height = int(original_height * scaling_factor)
         return scaled_height, scaled_width
 
     def _create_pearl_image(self) -> None:
         """Generates an image with pearls drawn based on processed color data.
-        This method processes the image in blocks of a size determined by the pearl dimensions in millimeters 
-        and the print DPI. For each block, it calculates the representative color, maps it to the closest DMC 
-        color, and draws a pearl (ellipse) with the corresponding color. Each pearl is also numbered, and the 
+        This method processes the image in blocks of a size determined by the pearl dimensions in millimeters
+        and the print DPI. For each block, it calculates the representative color, maps it to the closest DMC
+        color, and draws a pearl (ellipse) with the corresponding color. Each pearl is also numbered, and the
         number is drawn on top of the pearl.
-        The numbering is based on unique DMC colors, and the text color for the number is dynamically adjusted 
+        The numbering is based on unique DMC colors, and the text color for the number is dynamically adjusted
         based on the luminance of the pearl's color to ensure readability.
             perlengröße_pixel (int): The size of the pearls in pixels, calculated from the print DPI and pearl dimensions.
             zähler (int): Counter for numbering the pearls, incremented for each unique DMC color.
@@ -286,11 +310,13 @@ class GenerateDiamondperls:
             - If the Arial font is unavailable, a default font is used as a fallback.
             - The method ensures that the numbering and color mapping are consistent across the entire image.
         """
-        
+
         draw = ImageDraw.Draw(self._final_image)
 
         # Calculate pearl size in pixels
-        dmc_color_mapping, pearl_index, pearl_size_in_pixels = self._calculate_pearlsize()
+        dmc_color_mapping, pearl_index, pearl_size_in_pixels = (
+            self._calculate_pearlsize()
+        )
 
         for x in range(0, self._image_width, pearl_size_in_pixels):
             for y in range(0, self._image_height, pearl_size_in_pixels):
@@ -313,11 +339,17 @@ class GenerateDiamondperls:
 
                 # Calculate luminance to determine text color
                 luminance_value: float = 0.299 * r + 0.587 * g + 0.114 * b
-                text_color: tuple = (0, 0, 0) if luminance_value > 128 else (255, 255, 255)
+                text_color: tuple = (
+                    (0, 0, 0) if luminance_value > 128 else (255, 255, 255)
+                )
 
                 # Assign a new number if the color is not already mapped
                 if dmc_color_code not in dmc_color_mapping:
-                    dmc_color_mapping[dmc_color_code] = (pearl_index, mapped_dmc_color[2], rgb)
+                    dmc_color_mapping[dmc_color_code] = (
+                        pearl_index,
+                        mapped_dmc_color[2],
+                        rgb,
+                    )
                     pearl_index += 1
 
                 dmc_color_index: int = dmc_color_mapping[dmc_color_code][0]
@@ -332,11 +364,11 @@ class GenerateDiamondperls:
                 # Determine font size dynamically, with a minimum size of 10px
                 font_size: int = max(10, pearl_size_in_pixels // 2)
                 try:
-                    font = ImageFont.truetype(
-                        "arial.ttf", font_size
-                    )
+                    font = ImageFont.truetype("arial.ttf", font_size)
                 except IOError:
-                    font = ImageFont.load_default()  # Fallback to default font if Arial is unavailable
+                    font = (
+                        ImageFont.load_default()
+                    )  # Fallback to default font if Arial is unavailable
 
                 # Draw the number on the pearl
                 draw.text(
@@ -351,7 +383,9 @@ class GenerateDiamondperls:
         self._used_colors: dict = dmc_color_mapping
 
     def _calculate_pearlsize(self):
-        pearl_size_in_pixels: int = round(self._print_dpi * (self._pearl_dimension / MILLIMETERS_PER_INCH))
+        pearl_size_in_pixels: int = round(
+            self._print_dpi * (self._pearl_dimension / MILLIMETERS_PER_INCH)
+        )
         pearl_index: int = 1  # Start value for numbering
         dmc_color_mapping: dict = {}  # Stores the color and its corresponding number
         return dmc_color_mapping, pearl_index, pearl_size_in_pixels
@@ -410,7 +444,11 @@ class GenerateDiamondperls:
             f".{self._image_file_type}", "_verwendete_farben.txt"
         )
         with open(filename, "w", encoding="utf-8") as file:
-            for dmc_color_number, (color_index, color_name, color_rgb_values) in self._used_colors.items():
+            for dmc_color_number, (
+                color_index,
+                color_name,
+                color_rgb_values,
+            ) in self._used_colors.items():
                 file.write(
                     f"{color_index}. {dmc_color_number} - {color_name} (RGB: {color_rgb_values[0]}, {color_rgb_values[1]}, {color_rgb_values[2]})\n"
                 )
@@ -486,9 +524,15 @@ class GenerateDiamondperls:
                         text_color = (255, 255, 255)  # Weiß
 
                     # Hintergrundfarbe für die Zelle (Farbe)
-                    pdf_canvas.setFillColorRGB(r / 255, g / 255, b / 255)  # Farbe aus RGB setzen
+                    pdf_canvas.setFillColorRGB(
+                        r / 255, g / 255, b / 255
+                    )  # Farbe aus RGB setzen
                     pdf_canvas.rect(
-                        start_x_coordinate, text_y_coordinate - 10, column_widths[0], 20, fill=1
+                        start_x_coordinate,
+                        text_y_coordinate - 10,
+                        column_widths[0],
+                        20,
+                        fill=1,
                     )  # Rechteck als Hintergrund
 
                     # Text mit der passenden Farbe schreiben
